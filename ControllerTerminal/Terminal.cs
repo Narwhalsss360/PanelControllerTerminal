@@ -2,13 +2,9 @@
 using PanelController.Controller;
 using PanelController.Profiling;
 using System.Collections;
-using System.Formats.Asn1;
+using System.ComponentModel;
 using System.IO;
-using System.Net.Http.Headers;
 using System.Reflection;
-using System.Reflection.Metadata;
-using System.Runtime.Serialization;
-using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using System.Xml;
 using System.Xml.Serialization;
@@ -257,6 +253,7 @@ namespace ControllerTerminal
         private static void ControllerInitialized()
         {
             LoadAll();
+            Interpreter.InterfaceName = "Controller Terminal";
             Interpreter.Commands.Add(new(SaveAll));
             Interpreter.Commands.Add(new(BuiltIns.ShowCommand.Show));
             Interpreter.Commands.Add(new(BuiltIns.Clear));
@@ -320,29 +317,33 @@ namespace ControllerTerminal
 
                 }
 
-                public enum Options
+                public enum Categories
                 {
+                    [Description("PanelController Extensions.")]
                     LoadedExtensions,
                     Profiles,
+                    [Description("Mappings in Selected Profile.")]
                     Mappings,
                     Panels,
+                    [Description("Properties in Selected Object. Fields if Object isn't IPanelObject.")]
                     Properties,
                     Selected,
                     All
                 }
 
-                private static Dictionary<Options, ShowDelegate> _optionsSwitch = new()
+                private static Dictionary<Categories, ShowDelegate> _optionsSwitch = new()
                 {
-                   { Options.LoadedExtensions, LoadedExtensions },
-                   { Options.Profiles, Profiles },
-                   { Options.Mappings, Mappings },
-                   { Options.Panels, Panels },
-                   { Options.Properties, Properties },
-                   { Options.Selected, Selected },
-                   { Options.All, All }
+                   { Categories.LoadedExtensions, LoadedExtensions },
+                   { Categories.Profiles, Profiles },
+                   { Categories.Mappings, Mappings },
+                   { Categories.Panels, Panels },
+                   { Categories.Properties, Properties },
+                   { Categories.Selected, Selected },
+                   { Categories.All, All }
                 };
 
-                public static void Show(Options option = Options.All) => _optionsSwitch[option]();
+                [Description("Show information")]
+                public static void Show([Description("Select from which category to show.")] Categories category = Categories.All) => _optionsSwitch[category]();
             }
 
             public static void Dump(string format = "/T [/L][/F] /M")
