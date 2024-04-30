@@ -254,11 +254,7 @@ namespace ControllerTerminal
         {
             LoadAll();
             Interpreter.InterfaceName = "Controller Terminal";
-            Interpreter.Commands.Add(new(SaveAll));
-            Interpreter.Commands.Add(new(BuiltIns.ShowCommand.Show));
-            Interpreter.Commands.Add(new(BuiltIns.Clear));
-            Interpreter.Commands.Add(new(BuiltIns.Dump));
-            Interpreter.Commands.Add(new(BuiltIns.Quit));
+            Interpreter.Commands.AddRange(BuiltIns.Commands);
         }
 
         private static void Init(CLIInterpreter interpreter, Dispatcher dispatcher, Action quitRequestDelegate)
@@ -278,6 +274,15 @@ namespace ControllerTerminal
 
         public static class BuiltIns
         {
+            public static readonly CLIInterpreter.Command[] Commands = new CLIInterpreter.Command[]
+            {
+                new(SaveAll),
+                new(ShowCommand.Show),
+                new(Clear),
+                new(Dump),
+                new(Quit)
+            };
+
             public static class ShowCommand
             {
                 private delegate void ShowDelegate();
@@ -346,12 +351,14 @@ namespace ControllerTerminal
                 public static void Show([Description("Select from which category to show.")] Categories category = Categories.All) => _optionsSwitch[category]();
             }
 
-            public static void Dump(string format = "/T [/L][/F] /M")
+            [Description("Dump PanelController logs to output window.")]
+            public static void Dump([Description("/T -> Time, /L -> Level, /F -> From, /M -> Message")] string format = "/T [/L][/F] /M")
             {
                 foreach (Logger.HistoricalLog log in Logger.Logs)
                     Console.WriteLine(log.ToString(format));
             }
 
+            [Description("Clear the output window.")]
             public static void Clear()
             {
                 Console.Clear();
