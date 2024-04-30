@@ -1,6 +1,7 @@
 ﻿using CLIApplication;
 using PanelController.Controller;
 using PanelController.Profiling;
+using System.Collections;
 using System.Formats.Asn1;
 using System.IO;
 using System.Net.Http.Headers;
@@ -36,6 +37,8 @@ namespace ControllerTerminal
 
         private static Dispatcher? _dispatcher;
 
+        private static Delegate? _quitRequestDelegate = null;
+
         private static readonly InvalidProgramException _uninitializedControllerTerminalException = new("");
 
         public static CLIInterpreter Interpreter
@@ -63,6 +66,10 @@ namespace ControllerTerminal
                 return _dispatcher;
             }
         }
+
+        public static IList? SelectedContainer = null;
+        
+        public static object? SelectedObject = null;
 
         private static void Log(string message, Logger.Levels level)
         {
@@ -251,12 +258,17 @@ namespace ControllerTerminal
         {
             LoadAll();
             Interpreter.Commands.Add(new(SaveAll));
+            Interpreter.Commands.Add(new(BuiltIns.ShowCommand.Show));
+            Interpreter.Commands.Add(new(BuiltIns.Clear));
+            Interpreter.Commands.Add(new(BuiltIns.Dump));
+            Interpreter.Commands.Add(new(BuiltIns.Quit));
         }
 
-        private static void Init(CLIInterpreter interpreter, Dispatcher dispatcher)
+        private static void Init(CLIInterpreter interpreter, Dispatcher dispatcher, Delegate quitRequestDelegate)
         {
             _interpreter = interpreter;
             _dispatcher = dispatcher;
+            _quitRequestDelegate = quitRequestDelegate;
             if (Main.IsInitialized)
             {
                 ControllerInitialized();
@@ -264,6 +276,96 @@ namespace ControllerTerminal
             else
             {
                 Main.Initialized += (sender, args) => ControllerInitialized();
+            }
+        }
+
+        public static class BuiltIns
+        {
+            public static class ShowCommand
+            {
+                private delegate void ShowDelegate();
+
+                public static void LoadedExtensions()
+                {
+
+                }
+
+                public static void Profiles()
+                {
+
+                }
+                
+                public static void Mappings()
+                {
+
+                }
+
+                public static void Panels()
+                {
+
+                }
+
+                public static void Properties()
+                {
+
+                }
+
+                public static void Selected()
+                {
+
+                }
+
+                public static void All()
+                {
+
+                }
+
+                public enum Options
+                {
+                    LoadedExtensions,
+                    Profiles,
+                    Mappings,
+                    Panels,
+                    Properties,
+                    Selected,
+                    All
+                }
+
+                private static Dictionary<Options, ShowDelegate> _optionsSwitch = new()
+                {
+                   { Options.LoadedExtensions, LoadedExtensions },
+                   { Options.Profiles, Profiles },
+                   { Options.Mappings, Mappings },
+                   { Options.Panels, Panels },
+                   { Options.Properties, Properties },
+                   { Options.Selected, Selected },
+                   { Options.All, All }
+                };
+
+                public static void Show(Options option = Options.All) => _optionsSwitch[option]();
+            }
+
+            public static void Dump(string format = "/T [/L][/F] /M")
+            {
+                foreach (Logger.HistoricalLog log in Logger.Logs)
+                    Console.WriteLine(log.ToString(format));
+            }
+
+            public static void Clear()
+            {
+                Console.Clear();
+            }
+
+            public static void Quit()
+            {
+                if (_quitRequestDelegate is null)
+                {
+                    Main.Deinitialize();
+                }
+                else
+                {
+                    _quitRequestDelegate.DynamicInvoke();
+                }
             }
         }
     }

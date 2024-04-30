@@ -29,7 +29,7 @@ namespace TerminalHost
         {
             _ = (typeof(Terminal).
                 GetMethod("Init", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.
-                Invoke(null, new object[] { _interpreter, Dispatcher.CurrentDispatcher }));
+                Invoke(null, new object[] { _interpreter, Dispatcher.CurrentDispatcher, (object)Deinitialized }));
             PanelController.Controller.Main.Initialized += Initialized;
             PanelController.Controller.Main.Deinitialized += Deinitialized;
             PanelController.Controller.Main.Initialize();
