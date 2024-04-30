@@ -1,0 +1,6 @@
+[submodule "dependencies/PanelController"]
+	path = dependencies/PanelController
+	url = git@github.com:Narwhalsss360/PanelController
+[submodule "dependencies/CLIApplication"]
+	path = dependencies/CLIApplication
+	url = git@github.com:Narwhalsss360/CLIApplication

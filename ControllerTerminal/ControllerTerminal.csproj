@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	<UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\dependencies\CLIApplication\src\CLIApplication\CLIApplication.csproj" />
+    <ProjectReference Include="..\dependencies\PanelController\PanelController\PanelController.csproj" />
+  </ItemGroup>
+
+</Project>
