@@ -24,12 +24,17 @@ namespace TerminalHost
             Environment.Exit(0);
         }
 
+        private static void QuitRequest()
+        {
+            PanelController.Controller.Main.Deinitialize();
+        }
+
         [STAThread]
         public static void Main(string[] args)
         {
             _ = (typeof(Terminal).
                 GetMethod("Init", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.
-                Invoke(null, new object[] { _interpreter, Dispatcher.CurrentDispatcher, (object)Deinitialized }));
+                Invoke(null, new object[] { _interpreter, Dispatcher.CurrentDispatcher, (object)QuitRequest }));
             PanelController.Controller.Main.Initialized += Initialized;
             PanelController.Controller.Main.Deinitialized += Deinitialized;
             PanelController.Controller.Main.Initialize();

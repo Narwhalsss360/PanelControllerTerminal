@@ -37,7 +37,7 @@ namespace ControllerTerminal
 
         private static Dispatcher? _dispatcher;
 
-        private static Delegate? _quitRequestDelegate = null;
+        private static Action? _quitRequestDelegate = null;
 
         private static readonly InvalidProgramException _uninitializedControllerTerminalException = new("");
 
@@ -264,7 +264,7 @@ namespace ControllerTerminal
             Interpreter.Commands.Add(new(BuiltIns.Quit));
         }
 
-        private static void Init(CLIInterpreter interpreter, Dispatcher dispatcher, Delegate quitRequestDelegate)
+        private static void Init(CLIInterpreter interpreter, Dispatcher dispatcher, Action quitRequestDelegate)
         {
             _interpreter = interpreter;
             _dispatcher = dispatcher;
