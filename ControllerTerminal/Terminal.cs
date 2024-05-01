@@ -1,5 +1,7 @@
 ﻿using CLIApplication;
 using PanelController.Controller;
+using PanelController.PanelObjects;
+using PanelController.PanelObjects.Properties;
 using PanelController.Profiling;
 using System.Collections;
 using System.ComponentModel;
@@ -289,37 +291,127 @@ namespace ControllerTerminal
 
                 public static void LoadedExtensions()
                 {
-
+                    if (Extensions.AllExtensions.Length == 0)
+                        return;
+                    Interpreter.Out.WriteLine("Loaded Extensions:");
+                    foreach (Type extension in Extensions.AllExtensions)
+                        Interpreter.Out.WriteLine($"    {extension.GetItemName()} {extension.FullName}");
                 }
 
                 public static void Profiles()
                 {
-
+                    if (Main.Profiles.Count == 0)
+                        return;
+                    Interpreter.Out.WriteLine("Profiles");
+                    foreach (Profile profile in Main.Profiles)
+                        Interpreter.Out.WriteLine($"    {profile} {(ReferenceEquals(Main.CurrentProfile, profile) ? "SELECTED" : "")}");
                 }
                 
                 public static void Mappings()
                 {
+                    if (Main.CurrentProfile is null)
+                        return;
+                    if (Main.CurrentProfile.Mappings.Length == 0)
+                        return;
 
+                    Interpreter.Out.WriteLine("Mappings:");
+                    foreach (Mapping mapping in Main.CurrentProfile.Mappings)
+                    {
+                        Interpreter.Out.WriteLine($"    {mapping}");
+                        foreach (Mapping.MappedObject mapped in mapping.Objects)
+                            Interpreter.Out.WriteLine($"        {mapped.Object}:{mapped.Object.Status} {mapped.Delay} {mapped.Value}");
+                    }
                 }
 
                 public static void Panels()
                 {
+                    if (Main.PanelsInfo.Count == 0)
+                        return;
 
+                    Interpreter.Out.WriteLine("Panels:");
+                    foreach (PanelInfo info in Main.PanelsInfo)
+                    {
+                        Interpreter.Out.WriteLine($"    {info.Name} {info.PanelGuid} {(info.IsConnected ? "CONNECTED" : "DISCONNECTED")}");
+                        Interpreter.Out.WriteLine($"        Digital Count:{info.DigitalCount}");
+                        Interpreter.Out.WriteLine($"        Analog Count:{info.AnalogCount}");
+                        Interpreter.Out.WriteLine($"        Display Count:{info.DisplayCount}");
+                    }
                 }
 
                 public static void Properties()
                 {
+                    if (SelectedObject is null)
+                        return;
 
+                    Type[] knownTypes = new Type[]
+                    {
+                        typeof(Profile),
+                        typeof(PanelInfo),
+                        typeof(Mapping)
+                    };
+
+                    if (SelectedObject is not IPanelObject @object)
+                    {
+                        if (!knownTypes.Contains(SelectedObject.GetType()))
+                            Interpreter.Out.WriteLine($"WARNING: Listing of non-IPanelObject, listing {SelectedObject.GetType().Name} {SelectedObject}");
+
+                        Interpreter.Out.WriteLine("Properties:");
+                        foreach (PropertyInfo property in SelectedObject.GetType().GetProperties())
+                        {
+                            Interpreter.Out.Write($"    {(property.IsUserProperty() ? "*" : "")}{property.PropertyType.Name} {property.Name} = ");
+                            try
+                            {
+                                Interpreter.Out.WriteLine(property.GetValue(SelectedObject)?.ToString());
+                            }
+                            catch (Exception e)
+                            {
+                                Interpreter.Out.WriteLine($"Exception thrown trying to read: {e}");
+                            }
+                        }
+
+                        Interpreter.Out.WriteLine("Fields:");
+                        foreach (FieldInfo field in SelectedObject.GetType().GetFields())
+                        {
+                            Interpreter.Out.Write($"    {field.FieldType.Name} {field.Name} = ");
+                            try
+                            {
+                                Interpreter.Out.WriteLine(field.GetValue(SelectedObject)?.ToString());
+                            }
+                            catch (Exception e)
+                            {
+                                Interpreter.Out.WriteLine($"Exception thrown trying to read: {e}");
+                            }
+                        }
+                        return;
+                    }
+
+                    PropertyInfo[] properties = @object.GetUserProperties();
+                    if (properties.Length == 0)
+                        return;
+
+                    Interpreter.Out.WriteLine($"{@object.GetItemName()}:");
+                    foreach (PropertyInfo property in properties)
+                        Interpreter.Out.WriteLine($"    {property.PropertyType.Name} {property.Name} = {property.GetValue(@object)}");
                 }
 
                 public static void Selected()
                 {
+                    if (SelectedObject is null)
+                        return;
 
+                    Interpreter.Out.WriteLine("Currently Selected:");
+                    Interpreter.Out.WriteLine($"    Containing Collection:{SelectedContainer}");
+                    Interpreter.Out.WriteLine($"    Selected Object:{SelectedObject}");
+                    Interpreter.Out.WriteLine($"Current Profile: {Main.CurrentProfile?.Name}");
                 }
 
                 public static void All()
                 {
-
+                    Selected();
+                    LoadedExtensions();
+                    Profiles();
+                    Mappings();
+                    Panels();
                 }
 
                 public enum Categories
