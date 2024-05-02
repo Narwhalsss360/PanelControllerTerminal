@@ -314,13 +314,25 @@ namespace ControllerTerminal
             throw new InvalidProgramException($"{nameof(AskWhich)} should always return T or string.");
         }
 
+        public static object ExtensionSearch(string name)
+        {
+            IEnumerable<Type> nameMatch = Extensions.AllExtensions.Where(extension => extension.Name == name);
+            if (nameMatch.Count() > 1)
+                return $"More than one extension with name {name} matches";
+
+            if (nameMatch.Count() == 1)
+                return nameMatch.ElementAt(0);
+
+            return name.FindType() is Type type ? type : $"No extension with name/qualified-name with {name} matches";
+        }
+
         public static class BuiltIns
         {
             public static readonly CLIInterpreter.Command[] Commands = new CLIInterpreter.Command[]
             {
                 new(SaveAll),
                 new(ShowCommand.Show),
-                new(SelectedCommand.Select),
+                new(SelectCommand.Select),
                 new(Clear),
                 new(Dump),
                 new(Quit)
@@ -484,7 +496,7 @@ namespace ControllerTerminal
                 public static void Show([Description("Select from which category to show.")] Categories category = Categories.All) => _optionsSwitch[category]();
             }
 
-            public static class SelectedCommand
+            public static class SelectCommand
             {
                 public static void Generic()
                 {

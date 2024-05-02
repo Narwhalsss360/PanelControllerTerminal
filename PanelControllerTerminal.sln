@@ -6,6 +6,9 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dependencies", "dependencies", "{A9C18769-825F-400F-9105-35DE181F4FE1}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TerminalHost", "TerminalHost\TerminalHost.csproj", "{EFDBA7C2-78BA-4A32-9AA7-37E276BAC93E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{19C35D4C-E7F0-4C66-BE77-CB71DD8640A1} = {19C35D4C-E7F0-4C66-BE77-CB71DD8640A1}
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ControllerTerminal", "ControllerTerminal\ControllerTerminal.csproj", "{F777617E-650B-4268-B3D1-15087B4F8389}"
 EndProject
