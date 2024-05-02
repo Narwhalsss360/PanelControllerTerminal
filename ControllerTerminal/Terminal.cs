@@ -1,4 +1,5 @@
 ﻿using CLIApplication;
+using PanelController;
 using PanelController.Controller;
 using PanelController.PanelObjects;
 using PanelController.PanelObjects.Properties;
@@ -274,12 +275,52 @@ namespace ControllerTerminal
             }
         }
 
+        public static object AskWhich<T>(this IList<T> list, string listName = "") where T : class
+        {
+            int index = -1;
+
+            if (list.Count == 0)
+                return $"{(listName == "" ? "list" : listName)} is empty.";
+
+            Interpreter.Out.WriteLine("Select Index:");
+            for (int i = 0; i < list.Count; i++)
+                Interpreter.Out.WriteLine($"    {i}: {list[i]}");
+
+            if (!int.TryParse(Interpreter.In.ReadLine(), out index))
+                return "Not a number.";
+
+            return index == -1 ? "Selection Cancelled" : list[index];
+        }
+
+        public static object MatchElseAsk<T>(this IList<T> list, Predicate<T>? predicate = null, string listName = "", Action? noMatch = null) where T : class
+        {
+            if (predicate is null)
+                return list.AskWhich();
+
+            foreach (T item in list)
+                if (predicate(item))
+                    return item;
+
+            if (noMatch is not null)
+                noMatch();
+
+            return list.AskWhich();
+        }
+
+        public static T ValidateSelection<T>(this object selection)
+        {
+            if (selection is T selectedObject)
+                return selectedObject;
+            throw new InvalidProgramException($"{nameof(AskWhich)} should always return T or string.");
+        }
+
         public static class BuiltIns
         {
             public static readonly CLIInterpreter.Command[] Commands = new CLIInterpreter.Command[]
             {
                 new(SaveAll),
                 new(ShowCommand.Show),
+                new(SelectedCommand.Select),
                 new(Clear),
                 new(Dump),
                 new(Quit)
@@ -441,6 +482,110 @@ namespace ControllerTerminal
 
                 [Description("Show information")]
                 public static void Show([Description("Select from which category to show.")] Categories category = Categories.All) => _optionsSwitch[category]();
+            }
+
+            public static class SelectedCommand
+            {
+                public static void Generic()
+                {
+                    object selection = Extensions.Objects.AskWhich("Objects");
+                    if (selection is string selectionError)
+                    {
+                        Interpreter.Error.WriteLine(selectionError);
+                        return;
+                    }
+
+                    IPanelObject selectedPanelObject = selection.ValidateSelection<IPanelObject>();
+
+                    SelectedContainer = Extensions.Objects;
+                    SelectedObject = selectedPanelObject;
+                }
+
+                public static void Panel(string? panelName = null)
+                {
+                    object selection = panelName is null ? Main.PanelsInfo.AskWhich("Panels") : Main.PanelsInfo.MatchElseAsk(panel => panel.Name == panelName, "Panels", () => Interpreter.Error.WriteLine($"No panel with name {panelName}."));
+                    if (selection is string selectionError)
+                    {
+                        Interpreter.Error.WriteLine(selectionError);
+                        return;
+                    }
+
+                    SelectedObject = selection.ValidateSelection<PanelInfo>();
+                    SelectedContainer = Main.PanelsInfo;
+                }
+
+                public static void Profile(string? profileName)
+                {
+                    object selection = profileName is null ? Main.Profiles.AskWhich("Profiles") : Main.Profiles.MatchElseAsk(profile => profile.Name == profileName, "Profiles", () => Interpreter.Error.WriteLine($"No profile with name {profileName}."));
+                    if (selection is string selectionError)
+                    {
+                        Interpreter.Error.WriteLine(selectionError);
+                        return;
+                    }
+
+                    SelectedObject = selection.ValidateSelection<Profile>();
+                    SelectedContainer = Main.Profiles;
+                }
+
+                public static void Mapping(string? mappingName)
+                {
+                    if (Main.CurrentProfile is null)
+                    {
+                        Interpreter.Error.WriteLine("No current profile, cannot select mapping.");
+                        return;
+                    }
+
+                    SelectedObject = mappingName is null ? Main.CurrentProfile.Mappings.AskWhich("Mappings") : Main.CurrentProfile.Mappings.MatchElseAsk(mapping => mapping.Name == mappingName, "Mappings", () => Interpreter.Error.WriteLine($"No mapping with name {mappingName}."));
+                    SelectedContainer = Main.CurrentProfile.Mappings;
+                }
+
+                public static void MappedObject(bool? inner = null)
+                {
+                    inner ??= false;
+                    if (SelectedObject is Mapping.MappedObject mappedObject)
+                    {
+                        if (!inner.Value)
+                        {
+                            Interpreter.Error.WriteLine("Inner already selected.");
+                            return;
+                        }
+                        SelectedObject = mappedObject;
+                        SelectedContainer = null;
+                        return;
+                    }
+
+                    if (SelectedObject is not Mapping mapping)
+                    {
+                        Interpreter.Error.WriteLine("Must select Mapping before selecting MappedObject.");
+                        return;
+                    }
+
+                    object selection = mapping.Objects.AskWhich("Mappings");
+                    if (inner.Value)
+                    {
+                        SelectedObject = selection.ValidateSelection<Mapping>().Object;
+                        SelectedContainer = null;
+                    }
+                    else
+                    {
+                        SelectedObject = selection.ValidateSelection<Mapping>();
+                        SelectedContainer = mapping.Objects;
+                    }
+                }
+
+                public enum Categories
+                {
+                    Generic,
+                    Panel,
+                    Profile,
+                    Mapping,
+                    MappedObject
+                }
+
+                public static void Select()
+                {
+
+                }
             }
 
             [Description("Dump PanelController logs to output window.")]

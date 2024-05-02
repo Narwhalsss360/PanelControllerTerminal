@@ -6,7 +6,10 @@ namespace TerminalHost
 {
     public static class Program
     {
-        private static CLIInterpreter _interpreter = new();
+        private static CLIInterpreter _interpreter = new()
+        {
+            InterfaceName = "PanelController"
+        };
 
         private static Thread _interpreterThread = new(() => { _interpreter.Run(); });
 
