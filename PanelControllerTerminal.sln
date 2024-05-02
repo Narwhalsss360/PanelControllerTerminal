@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NStreamCom", "dependencies\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CLIApplication", "dependencies\CLIApplication\src\CLIApplication\CLIApplication.csproj", "{9BD55919-46B7-40AC-8874-B57589B5D167}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PanelControllerBasic", "dependencies\PanelControllerBasic\PanelControllerBasic\PanelControllerBasic.csproj", "{19C35D4C-E7F0-4C66-BE77-CB71DD8640A1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,10 @@ Global
 		{9BD55919-46B7-40AC-8874-B57589B5D167}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9BD55919-46B7-40AC-8874-B57589B5D167}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9BD55919-46B7-40AC-8874-B57589B5D167}.Release|Any CPU.Build.0 = Release|Any CPU
+		{19C35D4C-E7F0-4C66-BE77-CB71DD8640A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19C35D4C-E7F0-4C66-BE77-CB71DD8640A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19C35D4C-E7F0-4C66-BE77-CB71DD8640A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19C35D4C-E7F0-4C66-BE77-CB71DD8640A1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -49,6 +55,7 @@ Global
 		{E3EA4252-4EAC-4940-A1BC-572F14B9B66F} = {A9C18769-825F-400F-9105-35DE181F4FE1}
 		{D2A91EBA-80A4-4EF0-9A94-74ED70107B06} = {A9C18769-825F-400F-9105-35DE181F4FE1}
 		{9BD55919-46B7-40AC-8874-B57589B5D167} = {A9C18769-825F-400F-9105-35DE181F4FE1}
+		{19C35D4C-E7F0-4C66-BE77-CB71DD8640A1} = {A9C18769-825F-400F-9105-35DE181F4FE1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {EF6FACF5-DF4C-41C6-A6C5-BA7B7F3604F6}
