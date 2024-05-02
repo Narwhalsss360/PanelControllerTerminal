@@ -563,7 +563,7 @@ namespace ControllerTerminal
                     object selection = mapping.Objects.AskWhich("Mappings");
                     if (inner.Value)
                     {
-                        SelectedObject = selection.ValidateSelection<Mapping>().Object;
+                        SelectedObject = selection.ValidateSelection<Mapping.MappedObject>().Object;
                         SelectedContainer = null;
                     }
                     else
@@ -575,16 +575,41 @@ namespace ControllerTerminal
 
                 public enum Categories
                 {
+                    [Description("Select from list")]
                     Generic,
+                    [Description("Name, else select from list")]
                     Panel,
+                    [Description("Name, else select from list")]
                     Profile,
+                    [Description("Name, else select from list")]
                     Mapping,
+                    [Description("Select inner from already selected MappedObject OR Select from list of MappedObject from already selected Mapping. Provide --inner flag to select inner object")]
                     MappedObject
                 }
 
-                public static void Select()
+                [Description("Select a program object.")]
+                public static void Select([Description("Category to select from")] Categories category, [Description("Name to select (if applicable)")] string? name = null, string[]? flags = null)
                 {
-
+                    switch (category)
+                    {
+                        case Categories.Generic:
+                            Generic();
+                            break;
+                        case Categories.Panel:
+                            Panel(name);
+                            break;
+                        case Categories.Profile:
+                            Profile(name);
+                            break;
+                        case Categories.Mapping:
+                            Mapping(name);
+                            break;
+                        case Categories.MappedObject:
+                            MappedObject(flags?.Any(flag => flag.ToLower() == "--inner"));
+                            break;
+                        default:
+                            break;
+                    }
                 }
             }
 
