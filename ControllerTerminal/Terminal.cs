@@ -31,6 +31,8 @@ namespace ControllerTerminal
 
         public static readonly DirectoryInfo ProfilesDirectory = new DirectoryInfo(Path.Combine(WorkingDirectory, ProfilesFolder));
 
+        public static readonly Assembly ControllerAsssembly = typeof(Main).Assembly;
+
         private static XmlWriterSettings _xmlWriterSettings = new() { Indent = true, Encoding = System.Text.Encoding.UTF8, IndentChars = "\t" };
 
         private static CLIInterpreter? _interpreter;
@@ -624,6 +626,76 @@ namespace ControllerTerminal
                         default:
                             break;
                     }
+                }
+            }
+
+            public static class EditCommand
+            {
+                public const string ForcePanelObjectName = "/NAME";
+
+                [Description("Edit a property of an object.")]
+                public static void Edit([Description($"Name of property, use {ForcePanelObjectName} to force property to be ItemName")] string property, [Description("New value")] string value)
+                {
+                    if (SelectedObject is null)
+                    {
+                        Interpreter.Out.WriteLine("No selected object to edit.");
+                        return;
+                    }
+
+                    if (property == ForcePanelObjectName)
+                    {
+                        if (SelectedObject is not IPanelObject panelObject)
+                        {
+                            Interpreter.Error.WriteLine("Selected object is not IPanelObject, no ItemName");
+                            return;
+                        }
+
+                        panelObject.TrySetItemName(value);
+                        return;
+                    }
+
+                    if (ControllerAsssembly.DefinedTypes.Contains(SelectedObject.GetType()))
+                    {
+                        if (property != "Name")
+                        {
+                            Interpreter.Error.WriteLine("Can only edit name of a Controller Type");
+                            return;
+                        }
+
+                        if (SelectedObject.GetType().GetProperty("Name") is not PropertyInfo nameProp)
+                        {
+                            throw new InvalidProgramException("All selectable PanelController assembly types should have a property named 'Name'");
+                        }
+
+                        nameProp.SetValue(SelectedObject, value);
+                        return;
+                    }
+
+                    if (SelectedObject is not IPanelObject @object)
+                    {
+                        Interpreter.Out.WriteLine("Support for editting properties is only for IPanelObjects");
+                        return;
+                    }
+
+                    if (Array.Find(@object.GetUserProperties(), prop => prop.Name == property) is not PropertyInfo propertyInfo)
+                    {
+                        Interpreter.Error.WriteLine($"Property {property} not found.");
+                        return;
+                    }
+
+                    if (!ParameterInfoExtensions.IsSupported(propertyInfo.PropertyType))
+                    {
+                        Interpreter.Error.WriteLine($"Property type {propertyInfo.PropertyType} is not supported.");
+                        return;
+                    }
+
+                    if (value.ParseAs(propertyInfo.PropertyType) is not object parsedValue)
+                    {
+                        Interpreter.Error.WriteLine($"There was an error trying to parse {value} as {propertyInfo.PropertyType}.");
+                        return;
+                    }
+
+                    propertyInfo.SetValue(@object, parsedValue);
                 }
             }
 
