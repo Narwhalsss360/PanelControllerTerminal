@@ -4,3 +4,6 @@
 [submodule "dependencies/CLIApplication"]
 	path = dependencies/CLIApplication
 	url = git@github.com:Narwhalsss360/CLIApplication
+[submodule "dependencies/PanelControllerBasic"]
+	path = dependencies/PanelControllerBasic
+	url = git@github.com:Narwhalsss360/PanelControllerBasic
