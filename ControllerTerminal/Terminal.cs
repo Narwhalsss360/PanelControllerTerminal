@@ -8,6 +8,7 @@ using System.Collections;
 using System.ComponentModel;
 using System.IO;
 using System.Reflection;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Xml;
 using System.Xml.Serialization;
@@ -333,6 +334,7 @@ namespace ControllerTerminal
                 new(SaveAll),
                 new(ShowCommand.Show),
                 new(SelectCommand.Select),
+                new(Remove),
                 new(Clear),
                 new(Dump),
                 new(Quit)
@@ -622,6 +624,27 @@ namespace ControllerTerminal
                         default:
                             break;
                     }
+                }
+            }
+
+            public static void Remove(string[]? flags = null)
+            {
+                if (SelectedContainer is null)
+                {
+                    Interpreter.Error.WriteLine("Selected object has no container, cannot remove.");
+                    return;
+                }
+
+                flags ??= new string[0];
+                if (!flags.Any(flag => flag.ToLower() == "-y"))
+                {
+                    Interpreter.Out.Write("Confirm (yes/no):");
+
+                    if (Interpreter.In.ReadLine() is not string result)
+                        return;
+
+                    if (!result.ToLower().StartsWith("y"))
+                        return;
                 }
             }
 
