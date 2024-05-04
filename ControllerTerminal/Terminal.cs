@@ -326,6 +326,7 @@ namespace ControllerTerminal
             return flags;
         }
 
+        public static string[] RemoveFlagMarkers(this string[] flags) => Array.ConvertAll(flags, flag => flag.Remove(0, Interpreter.FlagMarker.Length));
         public static object ExtensionSearch(string name)
         {
             IEnumerable<Type> nameMatch = Extensions.AllExtensions.Where(extension => extension.Name == name);
@@ -618,7 +619,7 @@ namespace ControllerTerminal
                 [Description("Select a program object.")]
                 public static void Select([Description("Category to select from")] Categories category, [Description("Name to select (if applicable)")] string? name = null, string[]? flags = null)
                 {
-                    flags = flags.DefaultNullFlags();
+                    flags = flags.DefaultNullFlags().RemoveFlagMarkers();
                     switch (category)
                     {
                         case Categories.Generic:
@@ -634,7 +635,7 @@ namespace ControllerTerminal
                             Mapping(name);
                             break;
                         case Categories.MappedObject:
-                            MappedObject(flags.Contains("--inner"));
+                            MappedObject(flags.Contains("inner"));
                             break;
                         default:
                             break;
@@ -720,8 +721,8 @@ namespace ControllerTerminal
                     return;
                 }
 
-                flags = flags.DefaultNullFlags();
-                if (!flags.Contains("-y"))
+                flags = flags.DefaultNullFlags().RemoveFlagMarkers();
+                if (!flags.Contains("y"))
                 {
                     Interpreter.Out.Write("Confirm (yes/no):");
 
