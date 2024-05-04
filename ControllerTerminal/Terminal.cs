@@ -67,7 +67,7 @@ namespace ControllerTerminal
             }
         }
 
-        public static IList? SelectedContainer = null;
+        public static object? SelectedContainer = null;
         
         public static object? SelectedObject = null;
 
@@ -621,7 +621,7 @@ namespace ControllerTerminal
                 [Description("Select a program object.")]
                 public static void Select([Description("Category to select from")] Categories category, [Description("Name to select (if applicable)")] string? name = null, string[]? flags = null)
                 {
-                    flags = flags.DefaultNullFlags().RemoveFlagMarkers();
+                    flags = flags.DefaultNullFlags(false).RemoveFlagMarkers();
                     switch (category)
                     {
                         case Categories.Generic:
@@ -723,7 +723,7 @@ namespace ControllerTerminal
                     return;
                 }
 
-                flags = flags.DefaultNullFlags().RemoveFlagMarkers();
+                flags = flags.DefaultNullFlags(false).RemoveFlagMarkers();
                 if (!flags.Contains("y"))
                 {
                     Interpreter.Out.Write("Confirm (yes/no):");
@@ -734,6 +734,28 @@ namespace ControllerTerminal
                     if (!result.ToLower().StartsWith("y"))
                         return;
                 }
+
+                if (SelectedContainer is IList list)
+                {
+                    list.Remove(SelectedObject);
+                }
+                else if (SelectedContainer is Profile profile)
+                {
+                    if (SelectedObject is not Mapping selectedMapping)
+                    {
+                        Interpreter.Error.WriteLine("Unkown type in Profile Container");
+                        return;
+                    }
+                    profile.RemoveMapping(selectedMapping);
+                }
+                else
+                {
+                    Interpreter.Error.WriteLine("Unkown container");
+                    return;
+                }
+
+                SelectedObject = null;
+                SelectedContainer = null;
             }
 
             [Description("Dump PanelController logs to output window.")]
