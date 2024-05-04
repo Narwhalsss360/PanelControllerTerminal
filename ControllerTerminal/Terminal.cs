@@ -339,6 +339,22 @@ namespace ControllerTerminal
             return name.FindType() is Type type ? type : $"No extension with name/qualified-name with {name} matches";
         }
 
+        public static string AvoidNameConfict(this string name)
+        {
+            string[] deliminated = name.Split('(');
+            if (deliminated.Length == 1)
+                return $"{name}(1)";
+
+            if (deliminated.Last().Last() == ')')
+                deliminated[deliminated.Length - 1] = deliminated.Last().Substring(0, deliminated.Last().Length - 1);
+
+            if (!uint.TryParse(deliminated.Last(), out uint num))
+                return $"{name}(1)";
+
+
+            return $"{name.Substring(0, name.Length - $"({num})".Length)}({num + 1})";
+        }
+
         public static class BuiltIns
         {
             public static readonly CLIInterpreter.Command[] Commands = new CLIInterpreter.Command[]
