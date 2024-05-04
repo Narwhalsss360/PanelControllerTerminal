@@ -6,6 +6,7 @@ using PanelController.PanelObjects.Properties;
 using PanelController.Profiling;
 using System.Collections;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows.Media.Animation;
@@ -333,6 +334,9 @@ namespace ControllerTerminal
         {
             public static readonly CLIInterpreter.Command[] Commands = new CLIInterpreter.Command[]
             {
+#if DEBUG
+                new(Break),
+#endif
                 new(SaveAll),
                 new(ShowCommand.Show),
                 new(SelectCommand.Select),
@@ -744,6 +748,10 @@ namespace ControllerTerminal
                     _quitRequestDelegate.DynamicInvoke();
                 }
             }
+
+#if DEBUG
+            public static void Break() { ; }
+#endif
         }
     }
 }
