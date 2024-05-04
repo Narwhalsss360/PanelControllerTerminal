@@ -150,7 +150,7 @@ namespace ControllerTerminal
 
                 try
                 {
-                    if (serializer.CanDeserialize(reader))
+                    if (!serializer.CanDeserialize(reader))
                         continue;
                 }
                 catch (XmlException)
