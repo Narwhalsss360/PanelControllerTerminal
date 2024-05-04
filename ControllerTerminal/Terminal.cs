@@ -327,6 +327,7 @@ namespace ControllerTerminal
         }
 
         public static string[] RemoveFlagMarkers(this string[] flags) => Array.ConvertAll(flags, flag => flag.Remove(0, Interpreter.FlagMarker.Length));
+
         public static object ExtensionSearch(string name)
         {
             IEnumerable<Type> nameMatch = Extensions.AllExtensions.Where(extension => extension.Name == name);
@@ -365,6 +366,7 @@ namespace ControllerTerminal
                 new(SaveAll),
                 new(ShowCommand.Show),
                 new(SelectCommand.Select),
+                new(CreateCommand.Create),
                 new(Remove),
                 new(Clear),
                 new(Dump),
@@ -728,6 +730,329 @@ namespace ControllerTerminal
                     }
 
                     propertyInfo.SetValue(@object, parsedValue);
+                }
+            }
+
+            public static class CreateCommand
+            {
+                public delegate void SelectableCreator(bool select, string name, object[] constructArgs);
+
+                public static void Generic(bool select, string name, object[] constructArgs)
+                {
+                    object searchResult = ExtensionSearch(name);
+                    if (searchResult is string errorMessage)
+                    {
+                        Interpreter.Error.WriteLine(errorMessage);
+                        return;
+                    }
+
+                    if (searchResult is not Type type)
+                        throw new InvalidProgramException("ExtensionSearch should always return type of string or Type");
+                
+                    if (type.GetExtensionCategory() != Extensions.ExtensionCategories.Generic)
+                    {
+                        Interpreter.Error.WriteLine($"Extension {type.GetItemName()} is not a {Extensions.ExtensionCategories.Generic} type.");
+                        return;
+                    }
+
+                    IPanelObject? instance = null;
+
+                    try
+                    {
+                        instance = Activator.CreateInstance(type, constructArgs) as IPanelObject;
+                    }
+                    catch (MissingMethodException)
+                    {
+                        Interpreter.Error.WriteLine($"No constructor with specified arguments type exist");
+                        return;
+                    }
+
+                    if (instance is not IPanelObject)
+                    {
+                        Interpreter.Error.WriteLine($"Unkown type was created: {instance}.");
+                        return;
+                    }
+
+                    Extensions.Objects.Add(instance);
+
+                    if (select)
+                    {
+                        SelectedObject = instance;
+                        SelectedContainer = Extensions.Objects;
+                    }
+                }
+
+                public static void Channel(string name, object[] constructArgs)
+                {
+                    object searchResult = ExtensionSearch(name);
+                    if (searchResult is string errorMessage)
+                    {
+                        Interpreter.Error.WriteLine(errorMessage);
+                        return;
+                    }
+
+                    if (searchResult is not Type type)
+                        throw new InvalidProgramException("ExtensionSearch should always return type of string or Type");
+
+                    if (type.GetExtensionCategory() != Extensions.ExtensionCategories.Channel)
+                    {
+                        Interpreter.Error.WriteLine($"Extension {type.GetItemName()} is not a  {Extensions.ExtensionCategories.Channel}  type.e.");
+                        return;
+                    }
+
+                    IChannel? instance = null;
+
+                    try
+                    {
+                        instance = Activator.CreateInstance(type, constructArgs) as IChannel;
+                    }
+                    catch (MissingMethodException)
+                    {
+                        Interpreter.Error.WriteLine($"No constructor with specified arguments type exist");
+                        return;
+                    }
+
+                    if (instance is not IChannel)
+                    {
+                        Interpreter.Error.WriteLine($"Unkown type was created: {instance}.");
+                        return;
+                    }
+
+                    _ = Main.HandshakeAsync(instance);
+                }
+
+                public static void Profile(bool select, string name, object[] constructArgs)
+                {
+                    if (Main.Profiles.Any(profile => profile.Name == name))
+                    {
+                        Profile(select, name.AvoidNameConfict(), constructArgs);
+                        return;
+                    }
+
+                    Profile newProfile = new() { Name = name };
+                    Main.Profiles.Add(newProfile);
+                    if (select)
+                        Main.SelectedProfileIndex = Main.Profiles.IndexOf(newProfile);
+                }
+
+                public static void Mapping(bool select, string name, object[] constructArgs)
+                {
+                    if (Main.CurrentProfile is null)
+                    {
+                        Interpreter.Error.WriteLine("No current profile.");
+                        return;
+                    }
+
+                    if (Main.CurrentProfile.Mappings.Any(mapping => mapping.Name == name))
+                    {
+                        Mapping(select, name.AvoidNameConfict(), constructArgs);
+                        return;
+                    }
+
+                    Mapping newMapping = new() { Name = name };
+
+                    if (constructArgs.Length > 0)
+                    {
+                        if (constructArgs[0].GetType() != typeof(string))
+                        {
+                            Interpreter.Error.WriteLine("First argument after name must be InterfaceType");
+                        }
+                        else if ((constructArgs[0] as string)?.ParseAs(typeof(InterfaceTypes)) is not InterfaceTypes interfaceType)
+                        {
+                            Interpreter.Error.WriteLine("First argument after name must be InterfaceType");
+                        }
+                        else
+                        {
+                            newMapping.InterfaceType = interfaceType;
+                        }
+                    }
+
+                    if (constructArgs.Length > 1)
+                    {
+                        if (((uint?)constructArgs[1]) is not uint interfaceID)
+                        {
+                            Interpreter.Error.WriteLine("Second argument after name must be uint");
+                        }
+                        else
+                        {
+                            newMapping.InterfaceID = interfaceID;
+                        }
+                    }
+                    if (Main.CurrentProfile.FindMapping(newMapping) is not null)
+                    {
+                        Interpreter.Error.WriteLine("Mapping already exists.");
+                        return;
+                    }
+
+                    Main.CurrentProfile.AddMapping(newMapping);
+
+                    if (select)
+                    {
+                        SelectedObject = newMapping;
+                        SelectedContainer = Main.CurrentProfile;
+                    }
+                }
+
+                public static void MappedObject(bool select, string name, object[] constructArgs)
+                {
+                    if (SelectedObject is not Mapping mapping)
+                    {
+                        Interpreter.Error.WriteLine("Must have a preselected Mapping to attach MappedObject to.");
+                        return;
+                    }
+
+                    object selection = Main.PanelsInfo.MatchElseAsk(panel => panel.Name == name, "Panels", () => Interpreter.Error.WriteLine($"No panel with name {name} found."));
+                
+                    if (selection is string selectionErrorMessage)
+                    {
+                        Interpreter.Error.WriteLine(selectionErrorMessage);
+                        return;
+                    }
+
+                    PanelInfo panelInfo = select.ValidateSelection<PanelInfo>();
+
+                    if (constructArgs.Length < 1)
+                    {
+                        Interpreter.Error.WriteLine("Must enter type name to map.");
+                        return;
+                    }
+
+                    if (constructArgs[0] is not string typeName)
+                    {
+                        Interpreter.Error.WriteLine("Must enter type name to map.");
+                        return;
+                    }
+
+                    object search = ExtensionSearch(typeName);
+
+                    if (search is string searchErrorMessage)
+                    {
+                        Interpreter.Error.WriteLine(searchErrorMessage);
+                        return;
+                    }
+
+                    constructArgs = constructArgs[1..constructArgs.Length];
+
+                    if (search is not Type mappable)
+                        throw new InvalidProgramException($"ExtensionSearch should always return string or Type");
+
+                    IPanelObject? instance = null;
+
+                    try
+                    {
+                        instance = Activator.CreateInstance(mappable, constructArgs) as IPanelObject;
+                    }
+                    catch (MissingMethodException)
+                    {
+                        Interpreter.Error.WriteLine($"No constructor with specified arguments type exist");
+                        return;
+                    }
+
+                    if (instance is not IPanelObject)
+                    {
+                        Interpreter.Error.WriteLine($"Unkown type was created: {instance}.");
+                        return;
+                    }
+
+                    mapping.Objects.Add(new(instance, TimeSpan.Zero, null));
+                }
+
+                public static void PanelInfo(bool select, string name, object[] constructArgs)
+                {
+                    if (Main.PanelsInfo.Any(panel => panel.Name == name))
+                    {
+                        PanelInfo(select, name.AvoidNameConfict(), constructArgs);
+                        return;
+                    }
+
+                    PanelInfo newPanelInfo = new();
+
+                    if (constructArgs.Length > 0)
+                    {
+                        if (((uint?)constructArgs[0]) is not uint DigitalCount)
+                        {
+                            Interpreter.Error.WriteLine("First argument after name must be uint");
+                        }
+                        else
+                        {
+                            newPanelInfo.DigitalCount = DigitalCount;
+                        }
+                    }
+
+                    if (constructArgs.Length > 1)
+                    {
+                        if (((uint?)constructArgs[1]) is not uint AnalogCount)
+                        {
+                            Interpreter.Error.WriteLine("Second argument after name must be uint");
+                        }
+                        else
+                        {
+                            newPanelInfo.AnalogCount = AnalogCount;
+                        }
+                    }
+
+                    if (constructArgs.Length > 2)
+                    {
+                        if (((uint?)constructArgs[2]) is not uint DisplayCount)
+                        {
+                            Interpreter.Error.WriteLine("Third argument after name must be uint");
+                        }
+                        else
+                        {
+                            newPanelInfo.DisplayCount = DisplayCount;
+                        }
+                    }
+
+                    Main.PanelsInfo.Add(newPanelInfo);
+
+                    if (select)
+                    {
+                        SelectedObject = newPanelInfo;
+                        SelectedContainer = Main.PanelsInfo;
+                    }
+                }
+
+                public enum CreationType
+                {
+                    [Description("(typeName, Constructor Arguments...)")]
+                    Generic,
+                    [Description("(typeName, Constructor Arguments...)")]
+                    Channel,
+                    [Description("(profileName)")]
+                    Profile,
+                    [Description("(mappingName, InterfaceType?, InterfaceID)")]
+                    Mapping,
+                    [Description("(panelName, typeName, Constructor Arguments...)")]
+                    MappedObject,
+                    [Description("(panelName, digitalCount, analogCount, displayCount)")]
+                    PanelInfo
+                }
+
+                private static readonly Dictionary<CreationType, SelectableCreator> SelectableCreators = new()
+                {
+                    { CreationType.Generic, Generic },
+                    { CreationType.Profile, Profile },
+                    { CreationType.Mapping, Mapping },
+                    { CreationType.MappedObject, MappedObject },
+                    { CreationType.PanelInfo, PanelInfo }
+                };
+
+                public static void Create(CreationType type, string[]? flags = null, params object[] args)
+                {
+                    flags = flags.DefaultNullFlags(false);
+                    if (args.Length == 0)
+                    {
+                        Interpreter.Error.WriteLine($"Must enter name argument when creating {type} type.");
+                        return;
+                    }
+
+                    string name = args[0].ToString() ?? "";
+                    args = args[1..args.Length];
+
+                    if (type == CreationType.Channel)
+                        Channel(name, args);
+                    else
+                        SelectableCreators[type](flags.Contains("select"), name, args);
                 }
             }
 
