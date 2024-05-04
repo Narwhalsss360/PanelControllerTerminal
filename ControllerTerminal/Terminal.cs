@@ -1,15 +1,12 @@
 ﻿using CLIApplication;
-using PanelController;
 using PanelController.Controller;
 using PanelController.PanelObjects;
 using PanelController.PanelObjects.Properties;
 using PanelController.Profiling;
 using System.Collections;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Xml;
 using System.Xml.Serialization;
@@ -318,6 +315,17 @@ namespace ControllerTerminal
             throw new InvalidProgramException($"{nameof(AskWhich)} should always return T or string.");
         }
 
+        public static string[] DefaultNullFlags(this string[]? flags, bool? newCase = null)
+        {
+            if (flags is null)
+                return new string[0];
+
+            if (!newCase.HasValue)
+                return flags;
+            flags = Array.ConvertAll(flags, flag => newCase.Value ? flag.ToLower() : flag.ToUpper());
+            return flags;
+        }
+
         public static object ExtensionSearch(string name)
         {
             IEnumerable<Type> nameMatch = Extensions.AllExtensions.Where(extension => extension.Name == name);
@@ -610,6 +618,7 @@ namespace ControllerTerminal
                 [Description("Select a program object.")]
                 public static void Select([Description("Category to select from")] Categories category, [Description("Name to select (if applicable)")] string? name = null, string[]? flags = null)
                 {
+                    flags = flags.DefaultNullFlags();
                     switch (category)
                     {
                         case Categories.Generic:
@@ -625,7 +634,7 @@ namespace ControllerTerminal
                             Mapping(name);
                             break;
                         case Categories.MappedObject:
-                            MappedObject(flags?.Any(flag => flag.ToLower() == "--inner"));
+                            MappedObject(flags.Contains("--inner"));
                             break;
                         default:
                             break;
@@ -711,8 +720,8 @@ namespace ControllerTerminal
                     return;
                 }
 
-                flags ??= new string[0];
-                if (!flags.Any(flag => flag.ToLower() == "-y"))
+                flags = flags.DefaultNullFlags();
+                if (!flags.Contains("-y"))
                 {
                     Interpreter.Out.Write("Confirm (yes/no):");
 
