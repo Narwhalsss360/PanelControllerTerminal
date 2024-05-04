@@ -315,14 +315,14 @@ namespace ControllerTerminal
             throw new InvalidProgramException($"{nameof(AskWhich)} should always return T or string.");
         }
 
-        public static string[] DefaultNullFlags(this string[]? flags, bool? newCase = null)
+        public static string[] DefaultNullFlags(this string[]? flags, bool? toUpperOrLower = null)
         {
             if (flags is null)
                 return new string[0];
 
-            if (!newCase.HasValue)
+            if (!toUpperOrLower.HasValue)
                 return flags;
-            flags = Array.ConvertAll(flags, flag => newCase.Value ? flag.ToLower() : flag.ToUpper());
+            flags = Array.ConvertAll(flags, flag => toUpperOrLower.Value ? flag.ToLower() : flag.ToUpper());
             return flags;
         }
 
