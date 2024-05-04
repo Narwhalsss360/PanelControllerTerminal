@@ -552,8 +552,10 @@ namespace ControllerTerminal
                         return;
                     }
 
-                    SelectedObject = selection.ValidateSelection<Profile>();
+                    Profile selectedProfile = selection.ValidateSelection<Profile>();
+                    SelectedObject = selectedProfile;
                     SelectedContainer = Main.Profiles;
+                    Main.SelectedProfileIndex = Main.Profiles.IndexOf(selectedProfile);
                 }
 
                 public static void Mapping(string? mappingName)
