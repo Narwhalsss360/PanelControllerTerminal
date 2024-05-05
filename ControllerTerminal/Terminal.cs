@@ -7,6 +7,8 @@ using System.Collections;
 using System.ComponentModel;
 using System.IO;
 using System.Reflection;
+using System.Text.Json;
+using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Xml;
 using System.Xml.Serialization;
@@ -29,9 +31,17 @@ namespace ControllerTerminal
 
         public static readonly DirectoryInfo ProfilesDirectory = new DirectoryInfo(Path.Combine(WorkingDirectory, ProfilesFolder));
 
+        public static readonly string ConfigurationFileName = "cfg.json";
+
+        public static readonly FileInfo ConfigurationFile = new(ConfigurationFileName);
+
         public static readonly Assembly ControllerAsssembly = typeof(Main).Assembly;
 
+        public static Configuration Config = new();
+
         private static XmlWriterSettings _xmlWriterSettings = new() { Indent = true, Encoding = System.Text.Encoding.UTF8, IndentChars = "\t" };
+
+        private static JsonSerializerOptions _jsonSerializerOptions = new() { WriteIndented = true };
 
         private static CLIInterpreter? _interpreter;
 
@@ -219,12 +229,31 @@ namespace ControllerTerminal
             }
         }
 
+        public static void LoadConfig()
+        {
+            if (!ConfigurationFile.Exists)
+                return;
+            using FileStream file = ConfigurationFile.Open(FileMode.Open);
+            try
+            {
+                if (JsonSerializer.Deserialize<Configuration>(file) is not Configuration deserialized)
+                    throw new JsonException();
+                Config = deserialized;
+            }
+            catch (JsonException)
+            {
+                return;
+            }
+            Log($"Loaded ControllerTerminal configuration.", Logger.Levels.Info, true);
+        }
+
         public static void LoadAll()
         {
             LoadExtensions();
             LoadPanels();
             LoadProfiles();
             LoadCommands();
+            LoadConfig();
         }
 
         public static void SavePanels()
@@ -269,10 +298,18 @@ namespace ControllerTerminal
             }
         }
 
+        public static void SaveConfig()
+        {
+            using FileStream file = ConfigurationFile.Open(FileMode.OpenOrCreate);
+            using StreamWriter writer = new(file);
+            writer.Write(JsonSerializer.Serialize(Config, _jsonSerializerOptions));
+        }
+
         public static void SaveAll()
         {
             SavePanels();
             SaveProfiles();
+            SaveConfig();
         }
 
         private static void ControllerInitialized()
@@ -388,6 +425,7 @@ namespace ControllerTerminal
                 new(ShowCommand.Show),
                 new(SelectCommand.Select),
                 new(CreateCommand.Create),
+                new(ConfigCommand.Config),
                 new(Remove),
                 new(Clear),
                 new(Dump),
@@ -1074,6 +1112,163 @@ namespace ControllerTerminal
                         Channel(name, args);
                     else
                         SelectableCreators[type](flags.Contains("select"), name, args);
+                }
+            }
+
+            public static class ConfigCommand
+            {
+                public static void Set(string setting, string value, int index = -1)
+                {
+                    if (typeof(Configuration).GetProperty(setting) is not PropertyInfo property)
+                    {
+                        Interpreter.Error.WriteLine($"Property {setting} does not exist.");
+                        return;
+                    }
+
+                    if (!ParameterInfoExtensions.IsSupported(property.PropertyType))
+                    {
+                        throw new InvalidProgramException($"All properties of {nameof(Configuration)} must be a supported (parsable) type.");
+                    }
+
+                    object? parsedValue = value.ParseAs(property.PropertyType);
+
+                    if (parsedValue is null)
+                    {
+                        Interpreter.Error.WriteLine($"There was an error parsing \"{value}\" as {property.PropertyType.Name}.");
+                        return;
+                    }
+
+                    if (property.PropertyType.IsArray)
+                    {
+                        if (index < 0)
+                        {
+                            Interpreter.Error.WriteLine($"Must enter index of array {setting}.");
+                            return;
+                        }
+                        property.SetValue(Terminal.Config, parsedValue, new object?[] { index });
+                    }
+                    else
+                    {
+                        property.SetValue(Terminal.Config, parsedValue);
+                        Interpreter.Out.WriteLine($"{setting}:{property.GetValue(Terminal.Config)}");
+                    }
+                }
+
+                public static void Get(string setting, int index = -1)
+                {
+                    if (typeof(Configuration).GetProperty(setting) is not PropertyInfo property)
+                    {
+                        Interpreter.Error.WriteLine($"Property {setting} does not exist.");
+                        return;
+                    }
+
+                    if (property.PropertyType.IsArray)
+                    {
+                        if (index < 0)
+                        {
+                            Interpreter.Error.WriteLine($"Must enter index of array {setting}.");
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        Interpreter.Out.WriteLine($"{setting}:{property.GetValue(Terminal.Config)}");
+                    }
+                }
+
+                public static void List()
+                {
+                    foreach (PropertyInfo property in typeof(Configuration).GetProperties())
+                    {
+                        Interpreter.Out.Write($"{property.PropertyType} {property.Name}:");
+                        if (property.PropertyType.IsArray)
+                        {
+                            if (property.GetValue(Terminal.Config) is not IList list)
+                            {
+                                Interpreter.Out.WriteLine($"{null}");
+                                continue;
+                            }
+
+                            for (int i = 0; i < list.Count; i++)
+                                Interpreter.Out.WriteLine($"    [{i}]:{list[i]}");
+                        }
+                        else
+                        {
+                            Interpreter.Out.WriteLine(property.GetValue(Terminal.Config));
+                        }
+                    }
+                }
+
+                public static void Dump(string path)
+                {
+                    try
+                    {
+                        using FileStream file = File.Open(path, FileMode.OpenOrCreate);
+                        using StreamWriter writer = new(file);
+                        writer.Write(JsonSerializer.Serialize(Terminal.Config, _jsonSerializerOptions));
+                    }
+                    catch (Exception e)
+                    {
+                        Interpreter.Error.WriteLine($"There was an error dumping config: {e}, {e.Message}.");
+                    }
+                }
+
+                public static void Load(string path)
+                {
+                    try
+                    {
+                        using FileStream file = File.Open(path, FileMode.OpenOrCreate);
+                        using StreamReader reader = new(file);
+                        if (JsonSerializer.Deserialize<Configuration>(file) is not Configuration config)
+                            throw new Exception($"Deserialization Error");
+                        Terminal.Config = config;
+                    }
+                    catch (Exception e)
+                    {
+                        Interpreter.Error.WriteLine($"There was an error loading config: {e}, {e.Message}.");
+                        return;
+                    }
+
+                    Interpreter.Out.WriteLine($"Loaded config from {path}.");
+                }
+
+                public enum ConfigPropertyAction
+                {
+                    [Description("Set the value of a property | name: Name of property, value: New value")]
+                    Set,
+                    [Description("Get the value of a property | name: Name of property")]
+                    Get,
+                    [Description("Get all properties and values")]
+                    List,
+                    [Description("Serialize configuration and save to specified path | name: Output path")]
+                    Dump,
+                    [Description("Deserialize and load configuration from specified path | name: Input path")]
+                    Load
+                }
+
+                [Description("Manage ControllerTerminal configuation.")]
+                public static void Config(ConfigPropertyAction action, string name = "", string value = "", [Description("Enter index for managing single value of a 1-dimensional collection")] int index = -1)
+                {
+                    switch (action)
+                    {
+                        case ConfigPropertyAction.Set:
+                            Set(name, value, index);
+                            break;
+                        case ConfigPropertyAction.Get:
+                            Get(name, index);
+                            break;
+                        case ConfigPropertyAction.List:
+                            List();
+                            break;
+                        case ConfigPropertyAction.Dump:
+                            Dump(name);
+                            break;
+                        case ConfigPropertyAction.Load:
+                            Load(name);
+                            break;
+                        default:
+                            break;
+                    }
                 }
             }
 
