@@ -71,9 +71,16 @@ namespace ControllerTerminal
         
         public static object? SelectedObject = null;
 
-        private static void Log(string message, Logger.Levels level)
+        private static void Log(string message, Logger.Levels level, bool output = false)
         {
             Logger.Log(message, level, "Controller Terminal");
+            if (output)
+            {
+                if (level == Logger.Levels.Error)
+                    Interpreter.Error.WriteLine(message);
+                else
+                    Interpreter.Out.WriteLine(message);
+            }
         }
 
         public static Assembly? TryLoadAssembly(string path)
@@ -82,10 +89,24 @@ namespace ControllerTerminal
             {
                 return Assembly.LoadFrom(path);
             }
-            catch (BadImageFormatException)
+            catch (BadImageFormatException e)
             {
-                return null;
+                Log($"Cannot load assembly from {path}, incorrect DLL type. {e.Message}.", Logger.Levels.Error, true);
             }
+            catch (PlatformNotSupportedException e)
+            {
+                Log($"Cannot load assembly from {path}, wrong platform. {e.Message}.", Logger.Levels.Error, true);
+            }
+            catch (FileNotFoundException)
+            {
+                Interpreter.Error.WriteLine($"Cannot load {path}, file does not exist.");
+            }
+            catch (Exception e)
+            {
+                Log($"Cannot load assembly from {path}, {e}. {e.Message}.", Logger.Levels.Error, true);
+            }
+
+            return null;
         }
 
         public static void LoadExtensions()
