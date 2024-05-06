@@ -1079,7 +1079,7 @@ namespace ControllerTerminal
                         return;
                     }
 
-                    if (!ParameterInfoExtensions.IsSupported(property.PropertyType))
+                    if (!ParameterInfoExtensions.IsSupported(property.PropertyType) || property.GetCustomAttribute<UserPropertyAttribute>() is null)
                     {
                         throw new InvalidProgramException($"All properties of {nameof(Configuration)} must be a supported (parsable) type.");
                     }
@@ -1110,7 +1110,7 @@ namespace ControllerTerminal
 
                 public static void Get(string setting, int index = -1)
                 {
-                    if (typeof(Configuration).GetProperty(setting) is not PropertyInfo property)
+                    if (typeof(Configuration).GetProperty(setting) is not PropertyInfo property || property.GetCustomAttribute<UserPropertyAttribute>() is null)
                     {
                         Interpreter.Error.WriteLine($"Property {setting} does not exist.");
                         return;
@@ -1134,6 +1134,9 @@ namespace ControllerTerminal
                 {
                     foreach (PropertyInfo property in typeof(Configuration).GetProperties())
                     {
+                        if (property.GetCustomAttribute<UserPropertyAttribute>() is null)
+                            continue;
+
                         Interpreter.Out.Write($"{property.PropertyType} {property.Name}:");
                         if (property.PropertyType.IsArray)
                         {

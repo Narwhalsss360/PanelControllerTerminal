@@ -1,4 +1,5 @@
 ﻿using PanelController.Controller;
+using PanelController.PanelObjects.Properties;
 using System.Data;
 using System.IO;
 using System.Reflection;
@@ -48,6 +49,7 @@ namespace ControllerTerminal
             set => _constructor = value;
         }
 
+        [UserProperty]
         public string ConstructorMethodName
         {
             get => $"{Constructor.Method.DeclaringType}.{Constructor.Method.Name}";
@@ -61,12 +63,14 @@ namespace ControllerTerminal
             Interval = 30000
         };
 
+        [UserProperty]
         public bool AutoSave
         {
             get => _autoSaveTimer.Enabled;
             set => _autoSaveTimer.Enabled = value;
         }
 
+        [UserProperty]
         public double AutoSaveSecondsInterval
         {
             get => (double)_autoSaveTimer.Interval / 1000.0;
