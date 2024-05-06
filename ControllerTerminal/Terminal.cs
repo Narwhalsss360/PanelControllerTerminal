@@ -8,7 +8,6 @@ using System.ComponentModel;
 using System.IO;
 using System.Reflection;
 using System.Text.Json;
-using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Xml;
 using System.Xml.Serialization;
@@ -17,32 +16,6 @@ namespace ControllerTerminal
 {
     public static class Terminal
     {
-        public static readonly string WorkingDirectory = Environment.CurrentDirectory;
-
-        public static readonly string ExtensionsFolder = "Extensions";
-
-        public static readonly DirectoryInfo ExtensionsDirectory = new DirectoryInfo(Path.Combine(WorkingDirectory, ExtensionsFolder));
-
-        public static readonly string PanelsInfoFolder = "PanelsInfo";
-
-        public static readonly DirectoryInfo PanelsInfoDirectory = new DirectoryInfo(Path.Combine(WorkingDirectory, PanelsInfoFolder));
-
-        public static readonly string ProfilesFolder = "Profiles";
-
-        public static readonly DirectoryInfo ProfilesDirectory = new DirectoryInfo(Path.Combine(WorkingDirectory, ProfilesFolder));
-
-        public static readonly string ConfigurationFileName = "cfg.json";
-
-        public static readonly FileInfo ConfigurationFile = new(ConfigurationFileName);
-
-        public static readonly Assembly ControllerAsssembly = typeof(Main).Assembly;
-
-        public static Configuration Config = new();
-
-        private static XmlWriterSettings _xmlWriterSettings = new() { Indent = true, Encoding = System.Text.Encoding.UTF8, IndentChars = "\t" };
-
-        private static JsonSerializerOptions _jsonSerializerOptions = new() { WriteIndented = true };
-
         private static CLIInterpreter? _interpreter;
 
         private static Dispatcher? _dispatcher;
@@ -121,11 +94,11 @@ namespace ControllerTerminal
 
         public static void LoadExtensions()
         {
-            if (!ExtensionsDirectory.Exists)
+            if (!Configuration.ExtensionsDirectory.Exists)
                 return;
-            Log($"Loading extensions from {ExtensionsDirectory.FullName}.", Logger.Levels.Info);
+            Log($"Loading extensions from {Configuration.ExtensionsDirectory.FullName}.", Logger.Levels.Info);
 
-            foreach (FileInfo file in ExtensionsDirectory.GetFiles())
+            foreach (FileInfo file in Configuration.ExtensionsDirectory.GetFiles())
             {
                 if (file.Extension.ToLower() != ".dll")
                     continue;
@@ -137,11 +110,11 @@ namespace ControllerTerminal
 
         public static void LoadPanels()
         {
-            if (!PanelsInfoDirectory.Exists)
+            if (!Configuration.PanelsInfoDirectory.Exists)
                 return;
 
             XmlSerializer serializer = new(typeof(PanelInfo));
-            foreach (FileInfo file in PanelsInfoDirectory.GetFiles())
+            foreach (FileInfo file in Configuration.PanelsInfoDirectory.GetFiles())
             {
                 if (file.Extension.ToLower() != ".xml")
                     continue;
@@ -167,11 +140,11 @@ namespace ControllerTerminal
 
         public static void LoadProfiles()
         {
-            if (!ProfilesDirectory.Exists)
+            if (!Configuration.ProfilesDirectory.Exists)
                 return;
 
             XmlSerializer serializer = new XmlSerializer(typeof(Profile.SerializableProfile));
-            foreach (FileInfo file in ProfilesDirectory.GetFiles())
+            foreach (FileInfo file in Configuration.ProfilesDirectory.GetFiles())
             {
                 if (file.Extension.ToLower() != ".xml")
                     continue;
@@ -198,10 +171,10 @@ namespace ControllerTerminal
 
         public static void LoadCommands()
         {
-            if (!ExtensionsDirectory.Exists)
+            if (!Configuration.ExtensionsDirectory.Exists)
                 return;
 
-            foreach (FileInfo file in ExtensionsDirectory.GetFiles())
+            foreach (FileInfo file in Configuration.ExtensionsDirectory.GetFiles())
             {
                 if (file.Extension.ToLower() != ".dll")
                     continue;
@@ -231,14 +204,14 @@ namespace ControllerTerminal
 
         public static void LoadConfig()
         {
-            if (!ConfigurationFile.Exists)
+            if (!Configuration.ConfigurationFile.Exists)
                 return;
-            using FileStream file = ConfigurationFile.Open(FileMode.Open);
+            using FileStream file = Configuration.ConfigurationFile.Open(FileMode.Open);
             try
             {
                 if (JsonSerializer.Deserialize<Configuration>(file) is not Configuration deserialized)
                     throw new JsonException();
-                Config = deserialized;
+                Configuration.Config = deserialized;
             }
             catch (JsonException)
             {
@@ -258,18 +231,18 @@ namespace ControllerTerminal
 
         public static void SavePanels()
         {
-            if (!PanelsInfoDirectory.Exists)
-                PanelsInfoDirectory.Create();
+            if (!Configuration.PanelsInfoDirectory.Exists)
+                Configuration.PanelsInfoDirectory.Create();
 
             XmlSerializer serializer = new(typeof(PanelInfo));
             foreach (PanelInfo panelInfo in Main.PanelsInfo)
             {
-                using FileStream file = File.Open(Path.Combine(PanelsInfoDirectory.FullName, $"{panelInfo.PanelGuid}.xml"), FileMode.Create);
-                using XmlWriter writer = XmlWriter.Create(file, _xmlWriterSettings);
+                using FileStream file = File.Open(Path.Combine(Configuration.PanelsInfoDirectory.FullName, $"{panelInfo.PanelGuid}.xml"), FileMode.Create);
+                using XmlWriter writer = XmlWriter.Create(file, Configuration.Config._xmlWriterSettings);
                 serializer.Serialize(writer, panelInfo);
             }
 
-            foreach (FileInfo file in PanelsInfoDirectory.GetFiles())
+            foreach (FileInfo file in Configuration.PanelsInfoDirectory.GetFiles())
             {
                 if (Main.PanelsInfo.Any(panelInfo => $"{panelInfo.PanelGuid}.xml" == file.Name))
                     continue;
@@ -279,18 +252,18 @@ namespace ControllerTerminal
 
         public static void SaveProfiles()
         {
-            if (!ProfilesDirectory.Exists)
-                ProfilesDirectory.Create();
+            if (!Configuration.ProfilesDirectory.Exists)
+                Configuration.ProfilesDirectory.Create();
 
             XmlSerializer serializer = new(typeof(Profile.SerializableProfile));
             foreach (Profile profile in Main.Profiles)
             {
-                using FileStream file = File.Open(Path.Combine(ProfilesDirectory.FullName, $"{profile.Name}.xml"), FileMode.Create);
-                using XmlWriter writer = XmlWriter.Create(file, _xmlWriterSettings);
+                using FileStream file = File.Open(Path.Combine(Configuration.ProfilesDirectory.FullName, $"{profile.Name}.xml"), FileMode.Create);
+                using XmlWriter writer = XmlWriter.Create(file, Configuration.Config._xmlWriterSettings);
                 serializer.Serialize(writer, new Profile.SerializableProfile(profile));
             }
 
-            foreach (FileInfo file in ProfilesDirectory.GetFiles())
+            foreach (FileInfo file in Configuration.ProfilesDirectory.GetFiles())
             {
                 if (Main.Profiles.Any(profile => $"{profile.Name}.xml" == file.Name))
                     continue;
@@ -300,9 +273,9 @@ namespace ControllerTerminal
 
         public static void SaveConfig()
         {
-            using FileStream file = ConfigurationFile.Open(FileMode.OpenOrCreate);
+            using FileStream file = Configuration.ConfigurationFile.Open(FileMode.OpenOrCreate);
             using StreamWriter writer = new(file);
-            writer.Write(JsonSerializer.Serialize(Config, _jsonSerializerOptions));
+            writer.Write(JsonSerializer.Serialize(Configuration.Config, Configuration.Config._jsonSerializerOptions));
         }
 
         public static void SaveAll()
@@ -747,7 +720,7 @@ namespace ControllerTerminal
                         return;
                     }
 
-                    if (ControllerAsssembly.DefinedTypes.Contains(SelectedObject.GetType()))
+                    if (Configuration.ControllerAsssembly.DefinedTypes.Contains(SelectedObject.GetType()))
                     {
                         if (property != "Name")
                         {
@@ -1145,12 +1118,12 @@ namespace ControllerTerminal
                             Interpreter.Error.WriteLine($"Must enter index of array {setting}.");
                             return;
                         }
-                        property.SetValue(Terminal.Config, parsedValue, new object?[] { index });
+                        property.SetValue(Configuration.Config, parsedValue, new object?[] { index });
                     }
                     else
                     {
-                        property.SetValue(Terminal.Config, parsedValue);
-                        Interpreter.Out.WriteLine($"{setting}:{property.GetValue(Terminal.Config)}");
+                        property.SetValue(Configuration.Config, parsedValue);
+                        Interpreter.Out.WriteLine($"{setting}:{property.GetValue(Configuration.Config)}");
                     }
                 }
 
@@ -1172,7 +1145,7 @@ namespace ControllerTerminal
                     }
                     else
                     {
-                        Interpreter.Out.WriteLine($"{setting}:{property.GetValue(Terminal.Config)}");
+                        Interpreter.Out.WriteLine($"{setting}:{property.GetValue(Configuration.Config)}");
                     }
                 }
 
@@ -1183,7 +1156,7 @@ namespace ControllerTerminal
                         Interpreter.Out.Write($"{property.PropertyType} {property.Name}:");
                         if (property.PropertyType.IsArray)
                         {
-                            if (property.GetValue(Terminal.Config) is not IList list)
+                            if (property.GetValue(Configuration.Config) is not IList list)
                             {
                                 Interpreter.Out.WriteLine($"{null}");
                                 continue;
@@ -1194,7 +1167,7 @@ namespace ControllerTerminal
                         }
                         else
                         {
-                            Interpreter.Out.WriteLine(property.GetValue(Terminal.Config));
+                            Interpreter.Out.WriteLine(property.GetValue(Configuration.Config));
                         }
                     }
                 }
@@ -1205,7 +1178,7 @@ namespace ControllerTerminal
                     {
                         using FileStream file = File.Open(path, FileMode.OpenOrCreate);
                         using StreamWriter writer = new(file);
-                        writer.Write(JsonSerializer.Serialize(Terminal.Config, _jsonSerializerOptions));
+                        writer.Write(JsonSerializer.Serialize(Configuration.Config, Configuration.Config._jsonSerializerOptions));
                     }
                     catch (Exception e)
                     {
@@ -1221,7 +1194,7 @@ namespace ControllerTerminal
                         using StreamReader reader = new(file);
                         if (JsonSerializer.Deserialize<Configuration>(file) is not Configuration config)
                             throw new Exception($"Deserialization Error");
-                        Terminal.Config = config;
+                        Configuration.Config = config;
                     }
                     catch (Exception e)
                     {
