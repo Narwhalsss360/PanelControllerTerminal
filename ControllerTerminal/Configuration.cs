@@ -1,14 +1,20 @@
 ﻿using PanelController.Controller;
+using System.Data;
 using System.IO;
 using System.Reflection;
+using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Timers;
 using System.Xml;
+using System.Xml.Serialization;
 
 namespace ControllerTerminal
 {
     public class Configuration
     {
+        public delegate object ObjectConstructor(Type type, object?[] constructArguments);
+
         public static readonly string WorkingDirectory = Environment.CurrentDirectory;
 
         public static readonly string ExtensionsFolder = "Extensions";
@@ -33,8 +39,21 @@ namespace ControllerTerminal
 
         public JsonSerializerOptions _jsonSerializerOptions = new() { WriteIndented = true };
 
-        private static Configuration s_config = new();
+        private ObjectConstructor _constructor = DefaultConfigurationObjectConstructor;
 
+        [JsonIgnore]
+        public ObjectConstructor Constructor
+        {
+            get => _constructor;
+            set => _constructor = value;
+        }
+
+        public string ConstructorMethodName
+        {
+            get => $"{Constructor.Method.DeclaringType}.{Constructor.Method.Name}";
+        }
+
+        private static Configuration s_config = new();
 
         private readonly System.Timers.Timer _autoSaveTimer = new()
         {
@@ -61,8 +80,56 @@ namespace ControllerTerminal
             _autoSaveTimer.Elapsed += AutoSaveTimer_Elapsed;
         }
 
+        [JsonConstructor]
+        public Configuration(string? ConstructorMethodName)
+        {
+            if (FindObjectConstructor(ConstructorMethodName) is ObjectConstructor objectConstructor)
+                Constructor = objectConstructor;
+        }
+
+        public object Construct(Type type, object?[] constructArguments) => Constructor(type, constructArguments);
+
+        public T Construct<T>(object?[] constructArguments) => (T)(Construct(typeof(T), constructArguments) ?? throw new NullReferenceException($"Construction created a null reference"));
+
         private void AutoSaveTimer_Elapsed(object? sender, ElapsedEventArgs e) => Terminal.SaveAll();
-    
+
+        public static object DefaultConfigurationObjectConstructor(Type  type, object?[] constructArguments)
+        {
+            if (Activator.CreateInstance(type, constructArguments) is object constructed)
+                return constructed;
+            throw new NullReferenceException("Constructed object would create null reference");
+        }
+
+        public static ObjectConstructor? FindObjectConstructor(string? fullName)
+        {
+            if (fullName is null)
+                return null;
+
+            if (!fullName.Contains('.'))
+                return null;
+
+            string typeName = fullName[..fullName.LastIndexOf('.')];
+            string methodName = fullName[(fullName.LastIndexOf('.') + 1)..];
+
+            if (Type.GetType(typeName) is not Type type)
+                return null;
+
+            if (type.GetMethod(methodName) is not MethodInfo method)
+                return null;
+
+            if (!method.IsStatic)
+                return null;
+
+            try
+            {
+                return method.CreateDelegate<ObjectConstructor>();
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
         public class Serializable
         {
             public double? AutoSaveSecondsInterval { get; set; } = null;

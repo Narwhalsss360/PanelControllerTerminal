@@ -789,20 +789,14 @@ namespace ControllerTerminal
                         return;
                     }
 
-                    IPanelObject? instance;
+                    IPanelObject instance;
                     try
                     {
-                        instance = Activator.CreateInstance(type, constructArgs) as IPanelObject;
+                        instance = Configuration.Config.Construct<IPanelObject>(constructArgs);
                     }
-                    catch (MissingMethodException)
+                    catch (Exception e)
                     {
-                        Interpreter.Error.WriteLine($"No constructor with specified arguments type exist");
-                        return;
-                    }
-
-                    if (instance is null)
-                    {
-                        Interpreter.Error.WriteLine($"Unkown type was created: {instance}.");
+                        Interpreter.Error.WriteLine($"There was an error constructing object {e}: {e.Message}.");
                         return;
                     }
 
@@ -833,20 +827,14 @@ namespace ControllerTerminal
                         return;
                     }
 
-                    IChannel? instance;
+                    IChannel instance;
                     try
                     {
-                        instance = Activator.CreateInstance(type, constructArgs) as IChannel;
+                        instance = Configuration.Config.Construct<IChannel>(constructArgs);
                     }
-                    catch (MissingMethodException)
+                    catch (Exception e)
                     {
-                        Interpreter.Error.WriteLine($"No constructor with specified arguments type exist");
-                        return;
-                    }
-
-                    if (instance is null)
-                    {
-                        Interpreter.Error.WriteLine($"Unkown type was created: {instance}.");
+                        Interpreter.Error.WriteLine($"There was an error constructing object {e}: {e.Message}.");
                         return;
                     }
 
@@ -968,21 +956,14 @@ namespace ControllerTerminal
                     if (search is not Type mappable)
                         throw new InvalidProgramException($"ExtensionSearch should always return string or Type");
 
-                    IPanelObject? instance = null;
-
+                    IPanelObject instance;
                     try
                     {
-                        instance = Activator.CreateInstance(mappable, constructArgs) as IPanelObject;
+                        instance = Configuration.Config.Construct<IPanelObject>(constructArgs);
                     }
-                    catch (MissingMethodException)
+                    catch (Exception e)
                     {
-                        Interpreter.Error.WriteLine($"No constructor with specified arguments type exist");
-                        return;
-                    }
-
-                    if (instance is null)
-                    {
-                        Interpreter.Error.WriteLine($"Unkown type was created: {instance}.");
+                        Interpreter.Error.WriteLine($"There was an error constructing object {e}: {e.Message}.");
                         return;
                     }
 
