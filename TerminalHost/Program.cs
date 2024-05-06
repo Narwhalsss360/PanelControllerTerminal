@@ -47,9 +47,16 @@ namespace TerminalHost
 
         private static void Deinitialized(object? sender, EventArgs args)
         {
-            Terminal.Dispatcher.Invoke(() => { Terminal.Dispatcher.DisableProcessing(); });
-            Dispatcher.ExitAllFrames();
+            bool disabled = false;
+            Terminal.Dispatcher.Invoke(() =>
+            {
+                Terminal.Dispatcher.DisableProcessing();
+                Dispatcher.ExitAllFrames();
+                disabled = true;
+            });
             _interpreter.Stop();
+
+            while (!disabled) ;
             Environment.Exit(0);
         }
 
