@@ -8,6 +8,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Reflection;
 using System.Text.Json;
+using System.Windows;
 using System.Windows.Threading;
 using System.Xml;
 using System.Xml.Serialization;
@@ -407,6 +408,7 @@ namespace ControllerTerminal
                 new(ShowCommand.Show),
                 new(SelectCommand.Select),
                 new(CreateCommand.Create),
+                new(Open),
                 new(ConfigCommand.Config),
                 new(Remove),
                 new(Clear),
@@ -1236,6 +1238,69 @@ namespace ControllerTerminal
                 }
             }
 
+            public static void Open(string name, string[]? flags = null, params object[] constructArgs)
+            {
+                flags = flags.DefaultNullFlags().RemoveFlagMarkers();
+
+                object searchResult = ExtensionSearch(name);
+                if (searchResult is string errorMessage)
+                {
+                    Interpreter.Error.WriteLine(errorMessage);
+                    return;
+                }
+
+                if (searchResult is not Type type)
+                    throw new InvalidProgramException("ExtensionSearch should always return type of string or Type");
+
+                if (type.GetExtensionCategory() == Extensions.ExtensionCategories.Generic)
+                {
+                    if (!type.IsAssignableTo(typeof(Window)))
+                    {
+                        Interpreter.Error.WriteLine($"The type {type.GetItemName()} is not a window.");
+                        return;
+                    }
+
+                    IPanelObject instance;
+                    try
+                    {
+                        instance = Configuration.Config.Construct<IPanelObject>(type, constructArgs);
+                    }
+                    catch (Exception e)
+                    {
+                        Interpreter.Error.WriteLine($"There was an error constructing object {e}: {e.Message}.");
+                        return;
+                    }
+
+                    Extensions.Objects.Add(instance);
+
+                    if (flags.Contains("select"))
+                    {
+                        SelectedObject = instance;
+                        SelectedContainer = Extensions.Objects;
+                    }
+                }
+                else if (type.GetExtensionCategory() == Extensions.ExtensionCategories.Channel)
+                {
+                    IChannel instance;
+                    try
+                    {
+                        instance = Configuration.Config.Construct<IChannel>(type, constructArgs);
+                    }
+                    catch (Exception e)
+                    {
+                        Interpreter.Error.WriteLine($"There was an error constructing object {e}: {e.Message}.");
+                        return;
+                    }
+
+                    _ = Main.HandshakeAsync(instance);
+                }
+                else
+                {
+                    Interpreter.Error.WriteLine("Can only open a Generic (Window) type or a channel.");
+                    return;
+                }
+            }
+
             public static void Remove(string[]? flags = null)
             {
                 if (SelectedContainer is null)
@@ -1283,7 +1348,7 @@ namespace ControllerTerminal
             public static void Dump([Description("/T -> Time, /L -> Level, /F -> From, /M -> Message")] string format = "/T [/L][/F] /M")
             {
                 foreach (Logger.HistoricalLog log in Logger.Logs)
-                    Console.WriteLine(log.ToString(format));
+                    Interpreter.Out.WriteLine(log.ToString(format));
             }
 
             [Description("Clear the output window.")]
