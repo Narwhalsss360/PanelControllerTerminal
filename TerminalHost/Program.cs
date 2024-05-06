@@ -1,17 +1,44 @@
 ﻿using CLIApplication;
 using ControllerTerminal;
 using System.Windows.Threading;
+using System.Reflection;
 
 namespace TerminalHost
 {
     public static class Program
     {
+        private static readonly string TerminalControllerInitializerMethodName = "Init";
+
         private static CLIInterpreter _interpreter = new()
         {
             InterfaceName = "PanelController"
         };
 
         private static Thread _interpreterThread = new(() => { _interpreter.Run(); });
+
+        private static void InitializeTerminalController()
+        {
+            MethodInfo? initializer = typeof(Terminal).GetMethod(TerminalControllerInitializerMethodName, BindingFlags.NonPublic | BindingFlags.Static);
+            if (initializer is null)
+                throw new InvalidProgramException("ControllerTerminal initializer method not found");
+
+            object[] initializerArguments = new object[]
+            {
+                _interpreter,
+                Dispatcher.CurrentDispatcher,
+                (Action)QuitRequest
+            };
+
+            try
+            {
+                initializer.Invoke(null, initializerArguments);
+            }
+            catch (Exception)
+            {
+                Console.WriteLine($"An exception was thrown trying to invoke ControllerTerminal initializer.");
+                throw;
+            }
+        }
 
         private static void Initialized(object? sender, EventArgs args)
         {
@@ -27,17 +54,12 @@ namespace TerminalHost
             Environment.Exit(0);
         }
 
-        private static void QuitRequest()
-        {
-            PanelController.Controller.Main.Deinitialize();
-        }
+        private static void QuitRequest() => PanelController.Controller.Main.Deinitialize();
 
         [STAThread]
         public static void Main(string[] args)
         {
-            _ = (typeof(Terminal).
-                GetMethod("Init", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.
-                Invoke(null, new object[] { _interpreter, Dispatcher.CurrentDispatcher, (object)QuitRequest }));
+            InitializeTerminalController();
             PanelController.Controller.Main.Initialized += Initialized;
             PanelController.Controller.Main.Deinitialized += Deinitialized;
             PanelController.Controller.Main.Initialize();
