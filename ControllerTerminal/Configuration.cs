@@ -133,18 +133,5 @@ namespace ControllerTerminal
                 return null;
             }
         }
-
-        public class Serializable
-        {
-            public double? AutoSaveSecondsInterval { get; set; } = null;
-
-            public Serializable()
-            { }
-
-            public Serializable(Configuration config)
-            {
-                AutoSaveSecondsInterval = config.AutoSaveSecondsInterval;
-            }
-        }
     }
 }
