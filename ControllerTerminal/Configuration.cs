@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Timers;
+using System.Windows.Threading;
 using System.Xml;
 
 namespace ControllerTerminal
@@ -90,14 +91,22 @@ namespace ControllerTerminal
 
         public object Construct(Type type, object?[] constructArguments) => Constructor(type, constructArguments);
 
-        public T Construct<T>(object?[] constructArguments) => (T)(Construct(typeof(T), constructArguments) ?? throw new NullReferenceException($"Construction created a null reference"));
+        public TOut Construct<TOut, TIn>(object?[] constructArguments) => (TOut)(Construct(typeof(TIn), constructArguments) ?? throw new NullReferenceException($"Construction created a null reference"));
+
+        public TOut Construct<TOut>(Type type, object?[] constructArguments) => (TOut)(Construct(type, constructArguments) ?? throw new NullReferenceException($"Construction created a null reference"));
 
         private void AutoSaveTimer_Elapsed(object? sender, ElapsedEventArgs e) => Terminal.SaveAll();
 
         public static object DefaultConfigurationObjectConstructor(Type type, object?[] constructArguments)
         {
-            if (Activator.CreateInstance(type, constructArguments) is object constructed)
+            Func<object?> instantiator = () => Activator.CreateInstance(type, constructArguments);
+
+            if (type.IsAssignableTo(typeof(DispatcherObject)))
+                instantiator = () => Terminal.Dispatcher.Invoke(() => Activator.CreateInstance(type, constructArguments));
+
+            if (instantiator() is object constructed)
                 return constructed;
+
             throw new NullReferenceException("Constructed object would create null reference");
         }
 

@@ -294,6 +294,7 @@ namespace ControllerTerminal
             LoadAll();
             Interpreter.InterfaceName = "Controller Terminal";
             Interpreter.Commands.AddRange(BuiltIns.Commands);
+            ObjectsManager.Initialize();
         }
 
         private static void Init(CLIInterpreter interpreter, Dispatcher dispatcher, Action quitRequestDelegate)
@@ -792,7 +793,7 @@ namespace ControllerTerminal
                     IPanelObject instance;
                     try
                     {
-                        instance = Configuration.Config.Construct<IPanelObject>(constructArgs);
+                        instance = Configuration.Config.Construct<IPanelObject>(type, constructArgs);
                     }
                     catch (Exception e)
                     {
@@ -830,7 +831,7 @@ namespace ControllerTerminal
                     IChannel instance;
                     try
                     {
-                        instance = Configuration.Config.Construct<IChannel>(constructArgs);
+                        instance = Configuration.Config.Construct<IChannel>(type, constructArgs);
                     }
                     catch (Exception e)
                     {
@@ -959,7 +960,7 @@ namespace ControllerTerminal
                     IPanelObject instance;
                     try
                     {
-                        instance = Configuration.Config.Construct<IPanelObject>(constructArgs);
+                        instance = Configuration.Config.Construct<IPanelObject>(mappable, constructArgs);
                     }
                     catch (Exception e)
                     {
