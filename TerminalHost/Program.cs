@@ -1,7 +1,7 @@
 ﻿using CLIApplication;
 using ControllerTerminal;
-using System.Windows.Threading;
 using System.Reflection;
+using System.Windows.Threading;
 
 namespace TerminalHost
 {

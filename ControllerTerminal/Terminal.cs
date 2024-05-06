@@ -55,7 +55,7 @@ namespace ControllerTerminal
         private static object? s_selectedObject = null;
 
         public static object? SelectedContainer { get => s_selectedContainer; set => s_selectedContainer = value; }
-        
+
         public static object? SelectedObject { get => s_selectedObject; set => s_selectedObject = value; }
 
         private static void Log(string message, Logger.Levels level, bool output = false)
@@ -428,7 +428,7 @@ namespace ControllerTerminal
                     foreach (Profile profile in Main.Profiles)
                         Interpreter.Out.WriteLine($"    {profile} {(ReferenceEquals(Main.CurrentProfile, profile) ? "SELECTED" : "")}");
                 }
-                
+
                 public static void Mappings()
                 {
                     if (Main.CurrentProfile is null)
@@ -782,7 +782,7 @@ namespace ControllerTerminal
 
                     if (searchResult is not Type type)
                         throw new InvalidProgramException("ExtensionSearch should always return type of string or Type");
-                
+
                     if (type.GetExtensionCategory() != Extensions.ExtensionCategories.Generic)
                     {
                         Interpreter.Error.WriteLine($"Extension {type.GetItemName()} is not a {Extensions.ExtensionCategories.Generic} type.");
@@ -922,7 +922,7 @@ namespace ControllerTerminal
                     }
 
                     object selection = Main.PanelsInfo.MatchElseAsk(panel => panel.Name == name, "Panels", () => Interpreter.Error.WriteLine($"No panel with name {name} found."));
-                
+
                     if (selection is string selectionErrorMessage)
                     {
                         Interpreter.Error.WriteLine(selectionErrorMessage);
@@ -1298,7 +1298,7 @@ namespace ControllerTerminal
             }
 
 #if DEBUG
-            public static void Break() { ; }
+            public static void Break() { }
 #endif
         }
     }

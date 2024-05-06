@@ -1,14 +1,11 @@
 ﻿using PanelController.Controller;
 using PanelController.PanelObjects.Properties;
-using System.Data;
 using System.IO;
 using System.Reflection;
-using System.Runtime.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Timers;
 using System.Xml;
-using System.Xml.Serialization;
 
 namespace ControllerTerminal
 {
@@ -97,7 +94,7 @@ namespace ControllerTerminal
 
         private void AutoSaveTimer_Elapsed(object? sender, ElapsedEventArgs e) => Terminal.SaveAll();
 
-        public static object DefaultConfigurationObjectConstructor(Type  type, object?[] constructArguments)
+        public static object DefaultConfigurationObjectConstructor(Type type, object?[] constructArguments)
         {
             if (Activator.CreateInstance(type, constructArguments) is object constructed)
                 return constructed;
