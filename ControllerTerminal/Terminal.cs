@@ -297,6 +297,11 @@ namespace ControllerTerminal
             ObjectsManager.Initialize();
         }
 
+        private static void ControllerDeinitialized()
+        {
+            Extensions.Objects.Clear();
+        }
+
         private static void Init(CLIInterpreter interpreter, Dispatcher dispatcher, Action quitRequestDelegate)
         {
             _interpreter = interpreter;
@@ -310,6 +315,7 @@ namespace ControllerTerminal
             {
                 Main.Initialized += (sender, args) => ControllerInitialized();
             }
+            Main.Deinitialized += (sender, args) => ControllerDeinitialized();
         }
 
         public static object AskWhich<T>(this IList<T> list, string listName = "") where T : class

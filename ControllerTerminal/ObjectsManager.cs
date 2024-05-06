@@ -36,22 +36,20 @@ namespace ControllerTerminal
             if (args.NewItems is not null)
                 Objects.AddRange(args.NewItems.Cast<IPanelObject>().Where(@object => Watch(@object)));
 
-            if (args.OldItems is not null)
+            foreach (IPanelObject @object in Objects.Where(@object => (args.OldItems is not null ? args.OldItems.Contains(@object) : false) || args.Action == NotifyCollectionChangedAction.Reset))
             {
-                foreach (IPanelObject @object in Objects.Where(@object => args.OldItems.Contains(@object)))
+                if (GetDisposerFor(@object) is not Delegate disposer)
+                    throw new InvalidProgramException($"All watched objects must have a disposer");
+                try
                 {
-                    if (GetDisposerFor(@object) is not Delegate disposer)
-                        throw new InvalidProgramException($"All watched objects must have a disposer");
-                    try
-                    {
-                        disposer.DynamicInvoke(@object);
-                    }
-                    catch (Exception e)
-                    {
-                        Logger.Log($"An exception was thrown trying to dispose {@object}, {e}: {e.Message}.", Logger.Levels.Error, $"TerminalController {nameof(ObjectsManager)}");
-                    }
+                    disposer.DynamicInvoke(@object);
+                }
+                catch (Exception e)
+                {
+                    Logger.Log($"An exception was thrown trying to dispose {@object}, {e}: {e.Message}.", Logger.Levels.Error, $"TerminalController {nameof(ObjectsManager)}");
                 }
             }
+            
         }
 
         public static void AddWatch(Predicate<IPanelObject> watch) => s_watchObject.Add(watch);
