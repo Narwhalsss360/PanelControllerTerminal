@@ -13,15 +13,15 @@ namespace ControllerTerminal
 
         public static readonly string ExtensionsFolder = "Extensions";
 
-        public static readonly DirectoryInfo ExtensionsDirectory = new DirectoryInfo(Path.Combine(WorkingDirectory, ExtensionsFolder));
+        public static readonly DirectoryInfo ExtensionsDirectory = new(Path.Combine(WorkingDirectory, ExtensionsFolder));
 
         public static readonly string PanelsInfoFolder = "PanelsInfo";
 
-        public static readonly DirectoryInfo PanelsInfoDirectory = new DirectoryInfo(Path.Combine(WorkingDirectory, PanelsInfoFolder));
+        public static readonly DirectoryInfo PanelsInfoDirectory = new(Path.Combine(WorkingDirectory, PanelsInfoFolder));
 
         public static readonly string ProfilesFolder = "Profiles";
 
-        public static readonly DirectoryInfo ProfilesDirectory = new DirectoryInfo(Path.Combine(WorkingDirectory, ProfilesFolder));
+        public static readonly DirectoryInfo ProfilesDirectory = new(Path.Combine(WorkingDirectory, ProfilesFolder));
 
         public static readonly string ConfigurationFileName = "cfg.json";
 
@@ -33,10 +33,10 @@ namespace ControllerTerminal
 
         public JsonSerializerOptions _jsonSerializerOptions = new() { WriteIndented = true };
 
-        public static Configuration Config = new();
+        private static Configuration s_config = new();
 
 
-        private System.Timers.Timer _autoSaveTimer = new()
+        private readonly System.Timers.Timer _autoSaveTimer = new()
         {
             AutoReset = true,
             Interval = 30000
@@ -53,6 +53,8 @@ namespace ControllerTerminal
             get => (double)_autoSaveTimer.Interval / 1000.0;
             set => _autoSaveTimer.Interval = value * 1000;
         }
+
+        public static Configuration Config { get => s_config; set => s_config = value; }
 
         public Configuration()
         {

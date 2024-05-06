@@ -9,18 +9,17 @@ namespace TerminalHost
     {
         private static readonly string TerminalControllerInitializerMethodName = "Init";
 
-        private static CLIInterpreter _interpreter = new()
+        private static readonly CLIInterpreter _interpreter = new()
         {
             InterfaceName = "PanelController"
         };
 
-        private static Thread _interpreterThread = new(() => { _interpreter.Run(); });
+        private static readonly Thread _interpreterThread = new(() => { _interpreter.Run(); });
 
         private static void InitializeTerminalController()
         {
-            MethodInfo? initializer = typeof(Terminal).GetMethod(TerminalControllerInitializerMethodName, BindingFlags.NonPublic | BindingFlags.Static);
-            if (initializer is null)
-                throw new InvalidProgramException("ControllerTerminal initializer method not found");
+            MethodInfo? initializer = typeof(Terminal).GetMethod(TerminalControllerInitializerMethodName, BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidProgramException("ControllerTerminal initializer method not found");
 
             object[] initializerArguments = new object[]
             {
@@ -57,7 +56,7 @@ namespace TerminalHost
         private static void QuitRequest() => PanelController.Controller.Main.Deinitialize();
 
         [STAThread]
-        public static void Main(string[] args)
+        public static void Main()
         {
             InitializeTerminalController();
             PanelController.Controller.Main.Initialized += Initialized;

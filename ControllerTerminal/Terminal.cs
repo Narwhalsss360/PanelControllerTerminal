@@ -50,9 +50,13 @@ namespace ControllerTerminal
             }
         }
 
-        public static object? SelectedContainer = null;
+        private static object? s_selectedContainer = null;
+
+        private static object? s_selectedObject = null;
+
+        public static object? SelectedContainer { get => s_selectedContainer; set => s_selectedContainer = value; }
         
-        public static object? SelectedObject = null;
+        public static object? SelectedObject { get => s_selectedObject; set => s_selectedObject = value; }
 
         private static void Log(string message, Logger.Levels level, bool output = false)
         {
@@ -143,7 +147,7 @@ namespace ControllerTerminal
             if (!Configuration.ProfilesDirectory.Exists)
                 return;
 
-            XmlSerializer serializer = new XmlSerializer(typeof(Profile.SerializableProfile));
+            XmlSerializer serializer = new(typeof(Profile.SerializableProfile));
             foreach (FileInfo file in Configuration.ProfilesDirectory.GetFiles())
             {
                 if (file.Extension.ToLower() != ".xml")
@@ -309,8 +313,6 @@ namespace ControllerTerminal
 
         public static object AskWhich<T>(this IList<T> list, string listName = "") where T : class
         {
-            int index = -1;
-
             if (list.Count == 0)
                 return $"{(listName == "" ? "list" : listName)} is empty.";
 
@@ -318,16 +320,16 @@ namespace ControllerTerminal
             for (int i = 0; i < list.Count; i++)
                 Interpreter.Out.WriteLine($"    {i}: {list[i]}");
 
-            if (!int.TryParse(Interpreter.In.ReadLine(), out index))
+            if (!int.TryParse(Interpreter.In.ReadLine(), out int index))
                 return "Not a number.";
 
-            return index == -1 ? "Selection Cancelled" : list[index];
+            return index < 0 ? "Selection Cancelled" : list[index];
         }
 
         public static object MatchElseAsk<T>(this IList<T> list, Predicate<T>? predicate = null, string listName = "", Action? noMatch = null) where T : class
         {
             if (predicate is null)
-                return list.AskWhich();
+                return list.AskWhich(listName);
 
             foreach (T item in list)
                 if (predicate(item))
@@ -336,7 +338,7 @@ namespace ControllerTerminal
             if (noMatch is not null)
                 noMatch();
 
-            return list.AskWhich();
+            return list.AskWhich(listName);
         }
 
         public static T ValidateSelection<T>(this object selection)
@@ -349,7 +351,7 @@ namespace ControllerTerminal
         public static string[] DefaultNullFlags(this string[]? flags, bool? toUpperOrLower = null)
         {
             if (flags is null)
-                return new string[0];
+                return Array.Empty<string>();
 
             if (!toUpperOrLower.HasValue)
                 return flags;
@@ -378,13 +380,13 @@ namespace ControllerTerminal
                 return $"{name}(1)";
 
             if (deliminated.Last().Last() == ')')
-                deliminated[deliminated.Length - 1] = deliminated.Last().Substring(0, deliminated.Last().Length - 1);
+                deliminated[^1] = deliminated.Last()[..^1];
 
             if (!uint.TryParse(deliminated.Last(), out uint num))
                 return $"{name}(1)";
 
 
-            return $"{name.Substring(0, name.Length - $"({num})".Length)}({num + 1})";
+            return $"{name[..^$"({num})".Length]}({num + 1})";
         }
 
         public static class BuiltIns
@@ -548,7 +550,7 @@ namespace ControllerTerminal
                     All
                 }
 
-                private static Dictionary<Categories, ShowDelegate> _optionsSwitch = new()
+                private static readonly Dictionary<Categories, ShowDelegate> _optionsSwitch = new()
                 {
                    { Categories.LoadedExtensions, LoadedExtensions },
                    { Categories.Profiles, Profiles },
@@ -787,8 +789,7 @@ namespace ControllerTerminal
                         return;
                     }
 
-                    IPanelObject? instance = null;
-
+                    IPanelObject? instance;
                     try
                     {
                         instance = Activator.CreateInstance(type, constructArgs) as IPanelObject;
@@ -799,7 +800,7 @@ namespace ControllerTerminal
                         return;
                     }
 
-                    if (instance is not IPanelObject)
+                    if (instance is null)
                     {
                         Interpreter.Error.WriteLine($"Unkown type was created: {instance}.");
                         return;
@@ -832,8 +833,7 @@ namespace ControllerTerminal
                         return;
                     }
 
-                    IChannel? instance = null;
-
+                    IChannel? instance;
                     try
                     {
                         instance = Activator.CreateInstance(type, constructArgs) as IChannel;
@@ -844,7 +844,7 @@ namespace ControllerTerminal
                         return;
                     }
 
-                    if (instance is not IChannel)
+                    if (instance is null)
                     {
                         Interpreter.Error.WriteLine($"Unkown type was created: {instance}.");
                         return;
@@ -980,7 +980,7 @@ namespace ControllerTerminal
                         return;
                     }
 
-                    if (instance is not IPanelObject)
+                    if (instance is null)
                     {
                         Interpreter.Error.WriteLine($"Unkown type was created: {instance}.");
                         return;
@@ -1182,7 +1182,7 @@ namespace ControllerTerminal
                     }
                     catch (Exception e)
                     {
-                        Interpreter.Error.WriteLine($"There was an error dumping config: {e}, {e.Message}.");
+                        Interpreter.Error.WriteLine($"There was an error dumping s_config: {e}, {e.Message}.");
                     }
                 }
 
@@ -1198,11 +1198,11 @@ namespace ControllerTerminal
                     }
                     catch (Exception e)
                     {
-                        Interpreter.Error.WriteLine($"There was an error loading config: {e}, {e.Message}.");
+                        Interpreter.Error.WriteLine($"There was an error loading s_config: {e}, {e.Message}.");
                         return;
                     }
 
-                    Interpreter.Out.WriteLine($"Loaded config from {path}.");
+                    Interpreter.Out.WriteLine($"Loaded s_config from {path}.");
                 }
 
                 public enum ConfigPropertyAction
