@@ -407,6 +407,7 @@ namespace ControllerTerminal
                 new(SaveAll),
                 new(ShowCommand.Show),
                 new(SelectCommand.Select),
+                new(EditCommand.Edit),
                 new(CreateCommand.Create),
                 new(Open),
                 new(ConfigCommand.Config),
