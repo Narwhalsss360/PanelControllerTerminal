@@ -441,6 +441,12 @@ namespace ControllerTerminal
                     Interpreter.Out.WriteLine("Loaded Extensions:");
                     foreach (Type extension in Extensions.AllExtensions)
                         Interpreter.Out.WriteLine($"    {extension.GetItemName()} {extension.FullName}");
+
+                    if (Extensions.Objects.Count == 0)
+                        return;
+                    Interpreter.Out.WriteLine("Instantiated Extensions:");
+                    foreach (IPanelObject panelObject in Extensions.Objects)
+                        Interpreter.Out.WriteLine($"    {panelObject.GetItemName()}: {panelObject.GetType().Name}");
                 }
 
                 public static void Profiles()
