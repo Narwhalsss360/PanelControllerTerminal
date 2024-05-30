@@ -132,13 +132,17 @@ namespace ControllerTerminal
                     if (!serializer.CanDeserialize(reader))
                         continue;
                 }
-                catch (XmlException)
+                catch (XmlException e)
                 {
+                    Log($"There was an error loading {file.Name}: {e.Message}", Logger.Levels.Error);
                     continue;
                 }
 
                 if (serializer.Deserialize(reader) is not PanelInfo panelInfo)
+                {
+                    Log($"There was an unkown error loading {file.Name}", Logger.Levels.Error);
                     continue;
+                }
                 Main.PanelsInfo.Add(panelInfo);
             }
         }
@@ -162,13 +166,17 @@ namespace ControllerTerminal
                     if (!serializer.CanDeserialize(reader))
                         continue;
                 }
-                catch (XmlException)
+                catch (XmlException e)
                 {
+                    Log($"There was an error loading {file.Name}: {e.Message}", Logger.Levels.Error);
                     continue;
                 }
 
                 if (serializer.Deserialize(reader) is not Profile.SerializableProfile serializable)
+                {
+                    Log($"There was an error loading {file.Name}", Logger.Levels.Error);
                     continue;
+                }
 
                 Main.Profiles.Add(new(serializable));
             }
@@ -202,6 +210,7 @@ namespace ControllerTerminal
                         if (Interpreter.Commands.Contains(new(method)))
                             continue;
                         Interpreter.Commands.Add(new(method));
+                        Log($"Loaded command {method.Name} from {assembly.FullName}...{type.Name}", Logger.Levels.Info);
                     }
                 }
             }
@@ -218,8 +227,9 @@ namespace ControllerTerminal
                     throw new JsonException();
                 Configuration.Config = deserialized;
             }
-            catch (JsonException)
+            catch (JsonException e)
             {
+                Log($"There was an error loading {file.Name}: {e.Message}", Logger.Levels.Error);
                 return;
             }
             Log($"Loaded ControllerTerminal configuration.", Logger.Levels.Info, true);
@@ -253,6 +263,7 @@ namespace ControllerTerminal
                     continue;
                 file.Delete();
             }
+            Log("Panels Saved", Logger.Levels.Info);
         }
 
         public static void SaveProfiles()
@@ -274,6 +285,7 @@ namespace ControllerTerminal
                     continue;
                 file.Delete();
             }
+            Log("Panels Saved", Logger.Levels.Info);
         }
 
         public static void SaveConfig()
@@ -281,6 +293,7 @@ namespace ControllerTerminal
             using FileStream file = Configuration.ConfigurationFile.Open(FileMode.Create);
             using StreamWriter writer = new(file);
             writer.Write(JsonSerializer.Serialize(Configuration.Config, Configuration.Config._jsonSerializerOptions));
+            Log("Config Saved", Logger.Levels.Info);
         }
 
         public static void SaveAll()
