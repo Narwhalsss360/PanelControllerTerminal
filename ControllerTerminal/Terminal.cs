@@ -278,7 +278,7 @@ namespace ControllerTerminal
 
         public static void SaveConfig()
         {
-            using FileStream file = Configuration.ConfigurationFile.Open(FileMode.OpenOrCreate);
+            using FileStream file = Configuration.ConfigurationFile.Open(FileMode.Create);
             using StreamWriter writer = new(file);
             writer.Write(JsonSerializer.Serialize(Configuration.Config, Configuration.Config._jsonSerializerOptions));
         }
