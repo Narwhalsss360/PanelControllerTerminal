@@ -382,6 +382,65 @@ namespace ControllerTerminal
 
         public static string[] RemoveFlagMarkers(this string[] flags) => Array.ConvertAll(flags, flag => flag.Remove(0, Interpreter.FlagMarker.Length));
 
+        public static string PythonListPrint<T>(this IEnumerable<T> enumerable, Func<T, string>? stringifer = null)
+        {
+            if (stringifer is null)
+                stringifer = (T obj) => $"{obj}";
+            string output = "[";
+
+            foreach (T item in enumerable)
+                output += stringifer(item);
+
+            if (output != "[")
+                output.Remove(output.Length - 1 - ", ".Length);
+            output += "]";
+            return output;
+        }
+
+        public static string PythonDictionaryPrint<TKey, TValue>(this IDictionary<TKey, TValue> dict, Func<TKey, string>? keyStringifer = null, Func<TValue, string>? valueStringifer = null)
+        {
+            if (keyStringifer is null)
+                keyStringifer = (TKey key) => $"{key}";
+            if (valueStringifer is null)
+                valueStringifer = (TValue value) => $"{value}";
+
+            string output = "{";
+            TKey[] keys = dict.Keys.ToArray();
+            for (int i = 0; i < keys.Length; i++)
+            {
+                output += $"{keys[i]}:{dict[keys[i]]}";
+                if (i != keys.Length - 1)
+                    output += ", ";
+            }
+            output += "}";
+            return output;
+        }
+
+        public static string TypeNameNoGenericMangling(this Type type)
+        {
+            string name = type.Name;
+            int index = name.IndexOf('`');
+            return index == -1 ? name : name.Substring(0, index);
+        }
+
+        public static string NiceTypeName(this Type type)
+        {
+            if (type.IsGenericType)
+            {
+                string niceName = $"{type.TypeNameNoGenericMangling()}<";
+                Type[] genericArguments = type.GetGenericArguments();
+                for (int i = 0; i < genericArguments.Length; i++)
+                {
+                    niceName += genericArguments[i].NiceTypeName();
+                    if (i != genericArguments.Length - 1)
+                        niceName += ", ";
+                }
+                niceName += ">";
+                return niceName;
+            }
+            return type.Name;
+        }
+
         public static object ExtensionSearch(string name)
         {
             IEnumerable<Type> nameMatch = Extensions.AllExtensions.Where(extension => extension.Name == name);
