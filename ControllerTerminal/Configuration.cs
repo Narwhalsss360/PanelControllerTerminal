@@ -51,6 +51,18 @@ namespace ControllerTerminal
         public string ConstructorMethodName
         {
             get => $"{Constructor.Method.DeclaringType}.{Constructor.Method.Name}";
+            set
+            {
+                ObjectConstructor? ctor = FindObjectConstructor(value);
+                if (ctor is null)
+                {
+                    string message = $"{nameof(ObjectConstructor)} of named {value} not found";
+                    Logger.Log(message, Logger.Levels.Error, $"{nameof(ConstructorMethodName)} Setter");
+                    Terminal.Interpreter.Error.WriteLine(message);
+                    return;
+        }
+                _constructor = ctor;
+            }
         }
 
         private static Configuration s_config = new();
