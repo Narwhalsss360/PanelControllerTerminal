@@ -48,13 +48,15 @@ namespace ControllerTerminal
                 }
             }
 
-            foreach (IPanelObject @object in Objects.Where(@object => (args.OldItems is not null ? args.OldItems.Contains(@object) : false) || args.Action == NotifyCollectionChangedAction.Reset))
+            foreach (IPanelObject @object in Objects.Where(@object => (args.OldItems is not null ? args.OldItems.Contains(@object) : false) || args.Action == NotifyCollectionChangedAction.Reset).ToList())
             {
                 if (GetDisposerFor(@object) is not Delegate disposer)
                     throw new InvalidProgramException($"All watched objects must have a disposer");
+
                 try
                 {
                     disposer.DynamicInvoke(@object);
+                    Objects.Remove(@object);
                 }
                 catch (Exception e)
                 {
