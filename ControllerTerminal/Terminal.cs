@@ -805,8 +805,203 @@ namespace ControllerTerminal
             {
                 public const string ForcePanelObjectName = "/NAME";
 
+                public static void Property(PropertyInfo property, string? value)
+                {
+                    if (SelectedObject is null)
+                        return;
+
+                    if (!ParameterInfoExtensions.IsSupported(property.PropertyType))
+                    {
+                        Interpreter.Error.WriteLine($"Type {property.PropertyType.NiceTypeName()} is not supported");
+                        return;
+                    }
+
+                    object? parsed = null;
+
+                    if (value is null)
+                    {
+                        Interpreter.Out.Write($"Did you mena to set {property.Name} as null?");
+                        if (Interpreter.In.ReadLine() is not string entry)
+                            return;
+                        if (!entry.StartsWith('y'))
+                            return;
+                    }
+                    else if (value.ParseAs(property.PropertyType) is object parsedValue)
+                    {
+                        parsed = parsedValue;
+                    }
+                    else
+                    {
+                        Interpreter.Error.WriteLine($"There was an error parsing {value} as {value}");
+                        return;
+                    }
+
+                    property.SetValue(SelectedObject, value);
+                }
+
+                public static void List(PropertyInfo property, ContainerActions action, string? idxOrValue)
+                {
+                    if (SelectedObject is null)
+                        return;
+
+                    if (!property.PropertyType.IsAssignableTo(typeof(IList)) || property.GetValue(SelectedObject) is not IList list)
+                    {
+                        Interpreter.Error.WriteLine($"{property.Name} is of type {property.PropertyType.NiceTypeName()} and is not assignable to IList");
+                        return;
+                    }
+
+                    if (action == ContainerActions.Remove)
+                    {
+                        if (!int.TryParse(idxOrValue, out int idx))
+                        {
+                            Interpreter.Error.WriteLine($"Could not parse {idxOrValue} as a number");
+                            return;
+                        }
+                        if (list.Count == 0)
+                        {
+                            Interpreter.Error.WriteLine($"{property.Name} is empty");
+                            return;
+                        }
+                        if (idx < 0 || list.Count <= idx)
+                        {
+                            Interpreter.Error.WriteLine($"{idx} is out of range: [{0}, {list.Count}]");
+                            return;
+                        }
+                        list.RemoveAt(idx);
+                        return;
+                    }
+
+                    Type parseAs = typeof(string);
+
+                    if (property.PropertyType.IsGenericType)
+                    {
+                        if (property.PropertyType.GenericTypeArguments.Length != 0)
+                            parseAs = property.PropertyType.GenericTypeArguments[0];
+                    }
+
+                    if (!ParameterInfoExtensions.IsSupported(parseAs))
+                    {
+                        Interpreter.Error.WriteLine($"Type {parseAs.NiceTypeName()} is not supported");
+                        return;
+                    }
+
+                    object? parsed = null;
+
+                    if (idxOrValue is null)
+                    {
+                        Interpreter.Out.Write($"Did you mena to set {property.Name} as null?");
+                        if (Interpreter.In.ReadLine() is not string entry)
+                            return;
+                        if (!entry.StartsWith('y'))
+                            return;
+                    }
+                    else if (idxOrValue.ParseAs(parseAs) is object parsedValue)
+                    {
+                        parsed = parsedValue;
+                    }
+                    else
+                    {
+                        Interpreter.Error.WriteLine($"There was an error parsing {idxOrValue} as {parseAs.NiceTypeName()}");
+                        return;
+                    }
+
+                    list.Add(parsed);
+                }
+
+                public static void Dictionary(PropertyInfo property, ContainerActions action, string key, string? value = null)
+                {
+                    if (SelectedObject is null)
+                        return;
+
+                    if (!property.PropertyType.IsAssignableTo(typeof(IDictionary)) || property.GetValue(SelectedObject) is not IDictionary dictionary)
+                    {
+                        Interpreter.Error.WriteLine($"{property.Name} is of type {property.PropertyType.NiceTypeName()} and is not assignable to IDictionary");
+                        return;
+                    }
+
+                    Type keyType = typeof(string);
+                    Type valueType = typeof(string);
+
+                    if (property.PropertyType.IsGenericType)
+                    {
+                        if (property.PropertyType.GenericTypeArguments.Length > 0)
+                            keyType = property.PropertyType.GenericTypeArguments[0];
+                        if (property.PropertyType.GenericTypeArguments.Length > 1)
+                            valueType = property.PropertyType.GenericTypeArguments[1];
+                    }
+
+                    if (!ParameterInfoExtensions.IsSupported(keyType))
+                    {
+                        Interpreter.Error.WriteLine($"Type {keyType.NiceTypeName()} is not supported");
+                        return;
+                    }
+
+                    if (key.ParseAs(keyType) is not object parsedKey)
+                    {
+                        Interpreter.Error.WriteLine($"There was an error parsing key {key} as {keyType.NiceTypeName()}");
+                        return;
+                    }
+
+                    if (action == ContainerActions.Remove)
+                    {
+                        if (!dictionary.Contains(parsedKey))
+                        {
+                            Interpreter.Error.WriteLine($"Key {parsedKey} not in {property.Name}");
+                            return;
+                        }
+                        dictionary.Remove(parsedKey);
+                        return;
+                    }
+
+                    object? parsedValue = null;
+
+                    if (value is null)
+                    {
+                        Interpreter.Out.Write($"Did you mena to set {property.Name} as null?");
+                        if (Interpreter.In.ReadLine() is not string entry)
+                            return;
+                        if (!entry.StartsWith('y'))
+                            return;
+                    }
+                    else if (value.ParseAs(valueType) is object parsed)
+                    {
+                        parsedValue = parsed;
+                    }
+                    else
+                    {
+                        Interpreter.Error.WriteLine($"There was an error parsing {value} as {valueType.NiceTypeName()}");
+                        return;
+                    }
+
+                    if (!ParameterInfoExtensions.IsSupported(valueType))
+                    {
+                        Interpreter.Error.WriteLine($"Type {valueType.NiceTypeName()} is not supported");
+                        return;
+                    }
+
+                    dictionary.Add(parsedKey, parsedValue);
+                }
+
+                public enum EditTypes
+                {
+                    [Description("Single Property")]
+                    Property,
+                    [Description("1-Dimensional list")]
+                    List,
+                    [Description("Key-Value pairs")]
+                    Dictionary
+                }
+
+                public enum ContainerActions
+                {
+                    [Description("List: Add `value` | Dictionary: Add `key` and `value`")]
+                    Add,
+                    [Description("List: Remove at index `value` | Dictionary: Remove `key`")]
+                    Remove
+                }
+
                 [Description("Edit a property of an object.")]
-                public static void Edit([Description($"Name of property, use {ForcePanelObjectName} to force property to be ItemName")] string property, [Description("New value")] string value)
+                public static void Edit(EditTypes editType, [Description($"Name of property, use {ForcePanelObjectName} to force property to be ItemName")] string property, [Description("New value")] string? value = null, [Description("Key (for dictionary)")] string? key = null, ContainerActions? action = null)
                 {
                     if (SelectedObject is null)
                     {
@@ -822,8 +1017,12 @@ namespace ControllerTerminal
                             return;
                         }
 
+                        if (value is null)
+                        {
+                            return;
+                        }
+
                         panelObject.TrySetItemName(value);
-                        return;
                     }
 
                     if (Configuration.ControllerAsssembly.DefinedTypes.Contains(SelectedObject.GetType()))
@@ -855,19 +1054,35 @@ namespace ControllerTerminal
                         return;
                     }
 
-                    if (!ParameterInfoExtensions.IsSupported(propertyInfo.PropertyType))
+                    switch (editType)
                     {
-                        Interpreter.Error.WriteLine($"Property type {propertyInfo.PropertyType} is not supported.");
-                        return;
+                        case EditTypes.Property:
+                            Property(propertyInfo, value);
+                            break;
+                        case EditTypes.List:
+                            if (!action.HasValue)
+                            {
+                                Interpreter.Error.WriteLine($"Must specify {nameof(ContainerActions)}");
+                                return;
+                            }
+                            List(propertyInfo, action.Value, value);
+                            break;
+                        case EditTypes.Dictionary:
+                            if (key is null)
+                            {
+                                Interpreter.Error.WriteLine("Must specify key");
+                                return;
+                            }
+                            if (!action.HasValue)
+                            {
+                                Interpreter.Error.WriteLine($"Must specify {nameof(ContainerActions)}");
+                                return;
+                            }
+                            Dictionary(propertyInfo, action.Value, key, value);
+                            break;
+                        default:
+                            break;
                     }
-
-                    if (value.ParseAs(propertyInfo.PropertyType) is not object parsedValue)
-                    {
-                        Interpreter.Error.WriteLine($"There was an error trying to parse {value} as {propertyInfo.PropertyType}.");
-                        return;
-                    }
-
-                    propertyInfo.SetValue(@object, parsedValue);
                 }
             }
 
