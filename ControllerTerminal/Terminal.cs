@@ -553,6 +553,42 @@ namespace ControllerTerminal
                     if (SelectedObject is null)
                         return;
 
+                    string FormatPropertyOrField(object propOrField, object? from)
+                    {
+                        object? value = null;
+                        if (propOrField is PropertyInfo prop)
+                        {
+                            try
+                            {
+                                value = prop.GetValue(from);
+                            }
+                            catch (Exception e)
+                            {
+                                return $"Exception thrown trying to read: {e}";
+                            }
+                        }
+                        else if (propOrField is FieldInfo field)
+                        {
+                            try
+                            {
+                                value = field.GetValue(from);
+                            }
+                            catch (Exception e)
+                            {
+                                return $"Exception thrown trying to read: {e}";
+                            }
+                        }
+                        else
+                            return $"Cannot print {propOrField}: {propOrField.GetType().NiceTypeName()}";
+
+                        if (value is IEnumerable<object> enumerable)
+                            return PythonListPrint(enumerable);
+                        else if (value is IDictionary<object, object> dictionary)
+                            return PythonDictionaryPrint(dictionary);
+                        else
+                            return value is null ? "null" : $"{value}";
+                    }
+
                     Type[] knownTypes = new Type[]
                     {
                         typeof(Profile),
@@ -567,31 +603,11 @@ namespace ControllerTerminal
 
                         Interpreter.Out.WriteLine("Properties:");
                         foreach (PropertyInfo property in SelectedObject.GetType().GetProperties())
-                        {
-                            Interpreter.Out.Write($"    {(property.IsUserProperty() ? "*" : "")}{property.PropertyType.Name} {property.Name} = ");
-                            try
-                            {
-                                Interpreter.Out.WriteLine(property.GetValue(SelectedObject)?.ToString());
-                            }
-                            catch (Exception e)
-                            {
-                                Interpreter.Out.WriteLine($"Exception thrown trying to read: {e}");
-                            }
-                        }
+                            Interpreter.Out.WriteLine($"    {(property.IsUserProperty() ? "*" : "")}{property.PropertyType.NiceTypeName()} {property.Name} = {FormatPropertyOrField(property, SelectedObject)}");
 
                         Interpreter.Out.WriteLine("Fields:");
                         foreach (FieldInfo field in SelectedObject.GetType().GetFields())
-                        {
-                            Interpreter.Out.Write($"    {field.FieldType.Name} {field.Name} = ");
-                            try
-                            {
-                                Interpreter.Out.WriteLine(field.GetValue(SelectedObject)?.ToString());
-                            }
-                            catch (Exception e)
-                            {
-                                Interpreter.Out.WriteLine($"Exception thrown trying to read: {e}");
-                            }
-                        }
+                            Interpreter.Out.WriteLine($"    {field.FieldType.NiceTypeName()} {field.Name} = {FormatPropertyOrField(field, SelectedObject)}");
                         return;
                     }
 
@@ -601,7 +617,7 @@ namespace ControllerTerminal
 
                     Interpreter.Out.WriteLine($"{@object.GetItemName()}:");
                     foreach (PropertyInfo property in properties)
-                        Interpreter.Out.WriteLine($"    {property.PropertyType.Name} {property.Name} = {property.GetValue(@object)}");
+                        Interpreter.Out.WriteLine($"    {property.PropertyType.NiceTypeName()} {property.Name} = {FormatPropertyOrField(property, SelectedObject)}");
                 }
 
                 public static void Selected()
