@@ -60,7 +60,7 @@ namespace ControllerTerminal
                     Logger.Log(message, Logger.Levels.Error, $"{nameof(ConstructorMethodName)} Setter");
                     Terminal.Interpreter.Error.WriteLine(message);
                     return;
-        }
+                }
                 _constructor = ctor;
             }
         }
@@ -119,7 +119,25 @@ namespace ControllerTerminal
             if (instantiator() is object constructed)
                 return constructed;
 
+            Logger.Log("Rasing exception... Constructed object would create null reference", Logger.Levels.Error, nameof(DefaultConfigurationObjectConstructor));
             throw new NullReferenceException("Constructed object would create null reference");
+        }
+
+        public static object LogConstructor(Type type, object?[] constructArgs)
+        {
+            string argsString = "[";
+            for (int i = 0; i < constructArgs.Length; i++)
+            {
+                argsString += constructArgs[i]?.ToString();
+                if (constructArgs[i] is object obj)
+                    argsString += $": {obj.GetType()}";
+                if (i != constructArgs.Length - 1)
+                    argsString += ", ";
+            }
+            argsString += "]";
+
+            Logger.Log($"Constructing {type} with {argsString}", Logger.Levels.Info, nameof(LogConstructor));
+            return DefaultConfigurationObjectConstructor(type, constructArgs);
         }
 
         public static ObjectConstructor? FindObjectConstructor(string? fullName)
