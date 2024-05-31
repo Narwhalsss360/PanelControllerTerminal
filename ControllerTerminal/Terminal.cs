@@ -1225,7 +1225,7 @@ namespace ControllerTerminal
                         if (property.GetCustomAttribute<UserPropertyAttribute>() is null)
                             continue;
 
-                        Interpreter.Out.Write($"{property.PropertyType} {property.Name}:");
+                        Interpreter.Out.Write($"{property.PropertyType.Name} {property.Name}:");
                         if (property.PropertyType.IsArray)
                         {
                             if (property.GetValue(Configuration.Config) is not IList list)
@@ -1277,6 +1277,16 @@ namespace ControllerTerminal
                     Interpreter.Out.WriteLine($"Loaded s_config from {path}.");
                 }
 
+                public static void Default()
+                {
+                    Interpreter.Out.WriteLine("Are you sure you want to set configuration to defaults?(yes/no)");
+                    if (Interpreter.In.ReadLine() is not string ans)
+                        return;
+                    if (ans.ToLower().StartsWith('y'))
+                        return;
+                    Configuration.Config = new Configuration();
+                }
+
                 public enum ConfigPropertyAction
                 {
                     [Description("Set the value of a property | name: Name of property, value: New value")]
@@ -1288,7 +1298,9 @@ namespace ControllerTerminal
                     [Description("Serialize configuration and save to specified path | name: Output path")]
                     Dump,
                     [Description("Deserialize and load configuration from specified path | name: Input path")]
-                    Load
+                    Load,
+                    [Description("Set configuration to defaults")]
+                    Defaults
                 }
 
                 [Description("Manage ControllerTerminal configuation.")]
@@ -1310,6 +1322,9 @@ namespace ControllerTerminal
                             break;
                         case ConfigPropertyAction.Load:
                             Load(name);
+                            break;
+                        case ConfigPropertyAction.Defaults:
+                            Default();
                             break;
                         default:
                             break;
