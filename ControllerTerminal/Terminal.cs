@@ -1035,18 +1035,24 @@ namespace ControllerTerminal
 
                     if (Configuration.ControllerAsssembly.DefinedTypes.Contains(SelectedObject.GetType()))
                     {
-                        if (property != "Name")
-                        {
-                            Interpreter.Error.WriteLine("Can only edit name of a Controller Type");
-                            return;
-                        }
-
-                        if (SelectedObject.GetType().GetProperty("Name") is not PropertyInfo nameProp)
+                        if (SelectedObject.GetType().GetField(property) is not FieldInfo controllerField)
                         {
                             throw new InvalidProgramException("All selectable PanelController assembly types should have a property named 'Name'");
                         }
 
-                        nameProp.SetValue(SelectedObject, value);
+                        if (!ParameterInfoExtensions.IsSupported(controllerField.FieldType))
+                        {
+                            Interpreter.Error.WriteLine($"{controllerField.FieldType.NiceTypeName()} is an unsupported type");
+                            return;
+                        }
+
+                        if (value?.ParseAs(controllerField.FieldType) is not object parsed)
+                        {
+                            Interpreter.Error.WriteLine($"There was an error parsing {value} as {controllerField.FieldType.NiceTypeName()}");
+                            return;
+                        }
+
+                        controllerField.SetValue(SelectedObject, parsed);
                         return;
                     }
 
