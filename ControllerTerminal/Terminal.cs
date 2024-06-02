@@ -748,6 +748,13 @@ namespace ControllerTerminal
                     }
 
                     object selection = mapping.Objects.AskWhich("Mappings");
+
+                    if (selection is string selectionError)
+                    {
+                        Interpreter.Out.WriteLine(selectionError);
+                        return;
+                    }
+
                     if (inner.Value)
                     {
                         SelectedObject = selection.ValidateSelection<Mapping.MappedObject>().Object;
