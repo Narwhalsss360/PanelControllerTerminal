@@ -785,6 +785,7 @@ namespace ControllerTerminal
                 public static void Select([Description("Category to select from")] Categories category, [Description("Name to select (if applicable)")] string? name = null, string[]? flags = null)
                 {
                     flags = flags.DefaultNullFlags(false).RemoveFlagMarkers();
+                    
                     switch (category)
                     {
                         case Categories.Generic:
@@ -843,7 +844,7 @@ namespace ControllerTerminal
                         return;
                     }
 
-                    property.SetValue(SelectedObject, value);
+                    property.SetValue(SelectedObject, parsed);
                 }
 
                 public static void List(PropertyInfo property, ContainerActions action, string? idxOrValue)
