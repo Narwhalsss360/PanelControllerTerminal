@@ -469,6 +469,58 @@ namespace ControllerTerminal
             return $"{name[..^$"({num})".Length]}({num + 1})";
         }
 
+        public static ConstructorInfo? GetConstructorForArgs(this Type type, object[] args)
+        {
+            ConstructorInfo matchedCtor;
+            try
+            {
+                matchedCtor = (from ctor in type.GetConstructors()
+                        where ctor.GetParameters().Length == args.Length
+                        && ctor.GetParameters().All(
+                            param => ParameterInfoExtensions.IsSupported(param.ParameterType)
+                            )
+                        select ctor).First();
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
+
+            return (from param in matchedCtor.GetParameters()
+                    select param.ParameterType).
+                    Zip(
+                        from arg in args
+                        select arg.GetType()).
+                    All(tup => tup.First == tup.Second || tup.Second == typeof(string))
+                    ? matchedCtor : null;
+        }
+
+        public static object[] ParseEnums(this ParameterInfo[] parameters, object[] args)
+        {
+            if (parameters.Length != args.Length)
+                throw new InvalidOperationException($"`{nameof(parameters)}` and `{nameof(args)}` must be same length");
+
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                Type paramType = parameters[i].ParameterType;
+                object arg = args[i];
+                if (arg.GetType() == paramType)
+                    continue;
+                if (!paramType.IsEnum || arg is not string argString)
+                {
+                    Interpreter.Error.WriteLine($"{arg} could not be parsed as {paramType.NiceTypeName()}");
+                    break;
+                }
+                if (argString.ParseAs(paramType) is not object parsed)
+                {
+                    Interpreter.Error.WriteLine($"{arg} could not be parsed as {paramType.NiceTypeName()}");
+                    break;
+                }
+                args[i] = parsed;
+            }
+            return args;
+        }
+
         public static class BuiltIns
         {
             public static readonly CLIInterpreter.Command[] Commands = new CLIInterpreter.Command[]
@@ -505,7 +557,7 @@ namespace ControllerTerminal
                         return;
                     Interpreter.Out.WriteLine("Instantiated Extensions:");
                     foreach (IPanelObject panelObject in Extensions.Objects)
-                        Interpreter.Out.WriteLine($"    {panelObject.GetItemName()}: {panelObject.GetType().Name}");
+                        Interpreter.Out.WriteLine($"    {panelObject.GetItemName()}: {panelObject.GetType().NiceTypeName()}");
                 }
 
                 public static void Profiles()
@@ -1122,10 +1174,16 @@ namespace ControllerTerminal
                         return;
                     }
 
+                    if (type.GetConstructorForArgs(constructArgs) is not ConstructorInfo ctor)
+                    {
+                        Interpreter.Error.WriteLine("Constructor with specified arguments do not exist");
+                        return;
+                    }
+
                     IPanelObject instance;
                     try
                     {
-                        instance = Configuration.Config.Construct<IPanelObject>(type, constructArgs);
+                        instance = Configuration.Config.Construct<IPanelObject>(type, ctor.GetParameters().ParseEnums(constructArgs));
                     }
                     catch (Exception e)
                     {
@@ -1160,10 +1218,16 @@ namespace ControllerTerminal
                         return;
                     }
 
+                    if (type.GetConstructorForArgs(constructArgs) is not ConstructorInfo ctor)
+                    {
+                        Interpreter.Error.WriteLine("Constructor with specified arguments do not exist");
+                        return;
+                    }
+
                     IChannel instance;
                     try
                     {
-                        instance = Configuration.Config.Construct<IChannel>(type, constructArgs);
+                        instance = Configuration.Config.Construct<IChannel>(type, ctor.GetParameters().ParseEnums(constructArgs));
                     }
                     catch (Exception e)
                     {
@@ -1188,7 +1252,7 @@ namespace ControllerTerminal
                         Main.SelectedProfileIndex = Main.Profiles.IndexOf(newProfile);
                 }
 
-                public static void Mapping(bool select, string name, object[] constructArgs)
+                public static void Mapping(bool select, string name, bool? onPress, object[] constructArgs)
                 {
                     if (Main.CurrentProfile is null)
                     {
@@ -1198,11 +1262,11 @@ namespace ControllerTerminal
 
                     if (Main.CurrentProfile.Mappings.Any(mapping => mapping.Name == name))
                     {
-                        Mapping(select, name.AvoidNameConfict(), constructArgs);
+                        Mapping(select, name.AvoidNameConfict(), onPress, constructArgs);
                         return;
                     }
 
-                    Mapping newMapping = new() { Name = name };
+                    Mapping newMapping = new() { Name = name, InterfaceOption = onPress };
 
                     if (constructArgs.Length > 0)
                     {
@@ -1282,10 +1346,16 @@ namespace ControllerTerminal
                     if (search is not Type mappable)
                         throw new InvalidProgramException($"ExtensionSearch should always return string or Type");
 
+                    if (mappable.GetConstructorForArgs(constructArgs) is not ConstructorInfo ctor)
+                    {
+                        Interpreter.Error.WriteLine("Constructor with specified arguments do not exist");
+                        return;
+                    }
+
                     IPanelObject instance;
                     try
                     {
-                        instance = Configuration.Config.Construct<IPanelObject>(mappable, constructArgs);
+                        instance = Configuration.Config.Construct<IPanelObject>(mappable, ctor.GetParameters().ParseEnums(constructArgs));
                     }
                     catch (Exception e)
                     {
@@ -1371,7 +1441,6 @@ namespace ControllerTerminal
                 {
                     { CreationType.Generic, Generic },
                     { CreationType.Profile, Profile },
-                    { CreationType.Mapping, Mapping },
                     { CreationType.MappedObject, MappedObject },
                     { CreationType.PanelInfo, PanelInfo }
                 };
@@ -1390,6 +1459,8 @@ namespace ControllerTerminal
 
                     if (type == CreationType.Channel)
                         Channel(name, args);
+                    else if (type == CreationType.Mapping)
+                        Mapping(flags.Contains("select"), name, flags.Contains("on-press") ? true : (flags.Contains("on-release") ? false : null), args);
                     else
                         SelectableCreators[type](flags.Contains("select"), name, args);
                 }
@@ -1584,6 +1655,12 @@ namespace ControllerTerminal
                 if (searchResult is not Type type)
                     throw new InvalidProgramException("ExtensionSearch should always return type of string or Type");
 
+                if (type.GetConstructorForArgs(constructArgs) is not ConstructorInfo ctor)
+                {
+                    Interpreter.Error.WriteLine("Constructor with specified arguments do not exist");
+                    return;
+                }
+
                 if (type.GetExtensionCategory() == Extensions.ExtensionCategories.Generic)
                 {
                     if (!type.IsAssignableTo(typeof(Window)))
@@ -1595,7 +1672,7 @@ namespace ControllerTerminal
                     IPanelObject instance;
                     try
                     {
-                        instance = Configuration.Config.Construct<IPanelObject>(type, constructArgs);
+                        instance = Configuration.Config.Construct<IPanelObject>(type, ctor.GetParameters().ParseEnums(constructArgs));
                     }
                     catch (Exception e)
                     {
@@ -1616,7 +1693,7 @@ namespace ControllerTerminal
                     IChannel instance;
                     try
                     {
-                        instance = Configuration.Config.Construct<IChannel>(type, constructArgs);
+                        instance = Configuration.Config.Construct<IChannel>(type, ctor.GetParameters().ParseEnums(constructArgs));
                     }
                     catch (Exception e)
                     {
@@ -1702,7 +1779,8 @@ namespace ControllerTerminal
             }
 
 #if DEBUG
-            public static void Break() { }
+            public static void Break()
+            { }
 #endif
         }
     }
