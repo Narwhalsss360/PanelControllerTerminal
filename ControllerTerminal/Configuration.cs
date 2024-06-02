@@ -1,5 +1,6 @@
 ﻿using PanelController.Controller;
 using PanelController.PanelObjects.Properties;
+using PanelController.Profiling;
 using System.IO;
 using System.Reflection;
 using System.Text.Json;
@@ -87,6 +88,27 @@ namespace ControllerTerminal
             set => _autoSaveTimer.Interval = value * 1000;
         }
 
+        [UserProperty]
+        public bool PersistProfile { get; set; } = true;
+
+        public string ProfileName
+        {
+            get
+            {
+                return Main.CurrentProfile is null ? "" : Main.CurrentProfile.Name;
+            }
+            set
+            {
+                if (!PersistProfile)
+                    return;
+
+                if (Main.Profiles.Find(profile => profile.Name == value) is Profile profile)
+                    Main.CurrentProfile = profile;
+                else
+                    Logger.Log($"Persistent Profile {value} was not found", Logger.Levels.Error, "Terminal Configuration");
+            }
+        }
+
         public static Configuration Config { get => s_config; set => s_config = value; }
 
         public Configuration()
@@ -96,6 +118,7 @@ namespace ControllerTerminal
 
         [JsonConstructor]
         public Configuration(string? ConstructorMethodName)
+            : this()
         {
             if (FindObjectConstructor(ConstructorMethodName) is ObjectConstructor objectConstructor)
                 Constructor = objectConstructor;
@@ -118,7 +141,7 @@ namespace ControllerTerminal
 
             if (instantiator() is object constructed)
                 return constructed;
-
+                    
             Logger.Log("Rasing exception... Constructed object would create null reference", Logger.Levels.Error, nameof(DefaultConfigurationObjectConstructor));
             throw new NullReferenceException("Constructed object would create null reference");
         }
