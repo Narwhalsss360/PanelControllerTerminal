@@ -369,14 +369,14 @@ namespace ControllerTerminal
             throw new InvalidProgramException($"{nameof(AskWhich)} should always return T or string.");
         }
 
-        public static string[] DefaultNullFlags(this string[]? flags, bool? toUpperOrLower = null)
+        public static string[] DefaultNullFlags(this string[]? flags, bool? caseState = null)
         {
             if (flags is null)
                 return Array.Empty<string>();
 
-            if (!toUpperOrLower.HasValue)
+            if (!caseState.HasValue)
                 return flags;
-            flags = Array.ConvertAll(flags, flag => toUpperOrLower.Value ? flag.ToLower() : flag.ToUpper());
+            flags = Array.ConvertAll(flags, flag => caseState.Value ? flag.ToUpper() : flag.ToLower());
             return flags;
         }
 
