@@ -1208,11 +1208,11 @@ namespace ControllerTerminal
                     {
                         if (constructArgs[0].GetType() != typeof(string))
                         {
-                            Interpreter.Error.WriteLine("First argument after name must be InterfaceType");
+                            Interpreter.Error.WriteLine("First argument after typeName must be InterfaceType");
                         }
                         else if ((constructArgs[0] as string)?.ParseAs(typeof(InterfaceTypes)) is not InterfaceTypes interfaceType)
                         {
-                            Interpreter.Error.WriteLine("First argument after name must be InterfaceType");
+                            Interpreter.Error.WriteLine("First argument after typeName must be InterfaceType");
                         }
                         else
                         {
@@ -1224,13 +1224,30 @@ namespace ControllerTerminal
                     {
                         if (((uint?)constructArgs[1]) is not uint interfaceID)
                         {
-                            Interpreter.Error.WriteLine("Second argument after name must be uint");
+                            Interpreter.Error.WriteLine("Second argument after typeName must be uint");
                         }
                         else
                         {
                             newMapping.InterfaceID = interfaceID;
                         }
                     }
+
+                    if (constructArgs.Length > 2)
+                    {
+                        if (constructArgs[2] is not string panelName)
+                        {
+                            Interpreter.Error.WriteLine("Third argument after typeName must be string");
+                        }
+                        else if (Main.PanelsInfo.Find(panel => panel.Name == panelName) is PanelInfo panelInfo)
+                        {
+                            newMapping.PanelGuid = panelInfo.PanelGuid;
+                        }
+                        else
+                        {
+                            Interpreter.Error.WriteLine($"Panel by {panelName} was not found.");
+                        }
+                    }
+
                     if (Main.CurrentProfile.FindMapping(newMapping) is not null)
                     {
                         Interpreter.Error.WriteLine("Mapping already exists.");
@@ -1246,33 +1263,11 @@ namespace ControllerTerminal
                     }
                 }
 
-                public static void MappedObject(bool select, string name, object[] constructArgs)
+                public static void MappedObject(bool select, string typeName, object[] constructArgs)
                 {
                     if (SelectedObject is not Mapping mapping)
                     {
                         Interpreter.Error.WriteLine("Must have a preselected Mapping to attach MappedObject to.");
-                        return;
-                    }
-
-                    object selection = Main.PanelsInfo.MatchElseAsk(panel => panel.Name == name, "Panels", () => Interpreter.Error.WriteLine($"No panel with name {name} found."));
-
-                    if (selection is string selectionErrorMessage)
-                    {
-                        Interpreter.Error.WriteLine(selectionErrorMessage);
-                        return;
-                    }
-
-                    PanelInfo panelInfo = select.ValidateSelection<PanelInfo>();
-
-                    if (constructArgs.Length < 1)
-                    {
-                        Interpreter.Error.WriteLine("Must enter type name to map.");
-                        return;
-                    }
-
-                    if (constructArgs[0] is not string typeName)
-                    {
-                        Interpreter.Error.WriteLine("Must enter type name to map.");
                         return;
                     }
 
@@ -1283,8 +1278,6 @@ namespace ControllerTerminal
                         Interpreter.Error.WriteLine(searchErrorMessage);
                         return;
                     }
-
-                    constructArgs = constructArgs[1..constructArgs.Length];
 
                     if (search is not Type mappable)
                         throw new InvalidProgramException($"ExtensionSearch should always return string or Type");
@@ -1317,7 +1310,7 @@ namespace ControllerTerminal
                     {
                         if (((uint?)constructArgs[0]) is not uint DigitalCount)
                         {
-                            Interpreter.Error.WriteLine("First argument after name must be uint");
+                            Interpreter.Error.WriteLine("First argument after typeName must be uint");
                         }
                         else
                         {
@@ -1329,7 +1322,7 @@ namespace ControllerTerminal
                     {
                         if (((uint?)constructArgs[1]) is not uint AnalogCount)
                         {
-                            Interpreter.Error.WriteLine("Second argument after name must be uint");
+                            Interpreter.Error.WriteLine("Second argument after typeName must be uint");
                         }
                         else
                         {
@@ -1341,7 +1334,7 @@ namespace ControllerTerminal
                     {
                         if (((uint?)constructArgs[2]) is not uint DisplayCount)
                         {
-                            Interpreter.Error.WriteLine("Third argument after name must be uint");
+                            Interpreter.Error.WriteLine("Third argument after typeName must be uint");
                         }
                         else
                         {
@@ -1366,9 +1359,9 @@ namespace ControllerTerminal
                     Channel,
                     [Description("(profileName)")]
                     Profile,
-                    [Description("(mappingName, InterfaceType?, InterfaceID)")]
+                    [Description("(mappingName, InterfaceType, InterfaceID, PanelName?)")]
                     Mapping,
-                    [Description("(panelName, typeName, Constructor Arguments...)")]
+                    [Description("(typeName, Constructor Arguments...)")]
                     MappedObject,
                     [Description("(panelName, digitalCount, analogCount, displayCount)")]
                     PanelInfo
@@ -1388,7 +1381,7 @@ namespace ControllerTerminal
                     flags = flags.DefaultNullFlags(false);
                     if (args.Length == 0)
                     {
-                        Interpreter.Error.WriteLine($"Must enter name argument when creating {type} type.");
+                        Interpreter.Error.WriteLine($"Must enter typeName argument when creating {type} type.");
                         return;
                     }
 
