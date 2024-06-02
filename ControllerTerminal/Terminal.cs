@@ -369,6 +369,10 @@ namespace ControllerTerminal
             throw new InvalidProgramException($"{nameof(AskWhich)} should always return T or string.");
         }
 
+        public const bool DFLT_FLAGS_TO_UPPER = true;
+
+        public const bool DFLT_FLAGS_TO_LOWER = true;
+
         public static string[] DefaultNullFlags(this string[]? flags, bool? caseState = null)
         {
             if (flags is null)
@@ -521,6 +525,28 @@ namespace ControllerTerminal
             return args;
         }
 
+        public static object[] GlobalSearch(this string query)
+        {
+            query = query.ToLower();
+            List<object> objects = new();
+
+            bool ObjectQueryMatched(object @object)
+            {
+                return
+                    @object.GetItemName().ToLower().Contains(query) ||
+                    @object.GetItemDescription().ToLower().Contains(query) ||
+                    (@object.GetType().FullName?.ToLower().Contains(query) ?? false) ||
+                    (@object.ToString()?.ToLower().Contains(query) ?? false);
+            }
+
+            objects.AddRange(from extension in Extensions.AllExtensions where ObjectQueryMatched(extension) select extension);
+            objects.AddRange(from profile in Main.Profiles where ObjectQueryMatched(profile) select profile);
+            objects.AddRange(from panelInfo in Main.PanelsInfo where ObjectQueryMatched(panelInfo) select panelInfo);
+            objects.AddRange(from cmd in Interpreter.Commands where ObjectQueryMatched(cmd) select cmd);
+
+            return objects.ToArray();
+        }
+
         public static class BuiltIns
         {
             public static readonly CLIInterpreter.Command[] Commands = new CLIInterpreter.Command[]
@@ -535,6 +561,8 @@ namespace ControllerTerminal
                 new(CreateCommand.Create),
                 new(Open),
                 new(ConfigCommand.Config),
+                new(Detail),
+                new(Search),
                 new(Remove),
                 new(Clear),
                 new(Dump),
@@ -836,7 +864,7 @@ namespace ControllerTerminal
                 [Description("Select a program object.")]
                 public static void Select([Description("Category to select from")] Categories category, [Description("Name to select (if applicable)")] string? name = null, string[]? flags = null)
                 {
-                    flags = flags.DefaultNullFlags(false).RemoveFlagMarkers();
+                    flags = flags.DefaultNullFlags(DFLT_FLAGS_TO_LOWER).RemoveFlagMarkers();
                     
                     switch (category)
                     {
@@ -1447,7 +1475,7 @@ namespace ControllerTerminal
 
                 public static void Create(CreationType type, string[]? flags = null, params object[] args)
                 {
-                    flags = flags.DefaultNullFlags(false);
+                    flags = flags.DefaultNullFlags(DFLT_FLAGS_TO_LOWER).RemoveFlagMarkers();
                     if (args.Length == 0)
                     {
                         Interpreter.Error.WriteLine($"Must enter typeName argument when creating {type} type.");
@@ -1641,9 +1669,89 @@ namespace ControllerTerminal
                 }
             }
 
+            public static void Detail(int treeLevel = 3, bool properties = true, bool fields = true, bool onlyPanelControllerTypes = true)
+            {
+                void Recurse(object? current, int currentLevel, string name)
+                {
+                    if (current is null)
+                        return;
+                    if (currentLevel == treeLevel)
+                        return;
+
+                    if (!Configuration.ControllerAsssembly.GetTypes().
+                            Any(t => current.GetType().IsAssignableTo(t)) &&
+                        onlyPanelControllerTypes &&
+                        current.GetType() != typeof(Type) || current.GetType().IsPrimitive)
+                        return;
+
+
+                    string levelIndent = "";
+                    for (int i = 0; i < currentLevel; i++)
+                        levelIndent += '\t';
+
+                    Interpreter.Out.WriteLine($"{levelIndent}{name}:{current} -> {current.GetType().NiceTypeName()} | {current.GetItemDescription()}");
+
+                    if (current.GetType().IsPrimitive)
+                        return;
+
+                    if (properties)
+                    {
+                        foreach (PropertyInfo prop in  current.GetType().GetProperties())
+                        {
+                            try
+                            {
+                                Recurse(prop.GetValue(current), currentLevel + 1, prop.Name);
+                            }
+                            catch (Exception)
+                            {
+                            }
+                        }
+                    }
+
+                    if (fields)
+                    {
+                        foreach (FieldInfo field in current.GetType().GetFields())
+                        {
+                            try
+                            {
+                                Recurse(field.GetValue(current), currentLevel + 1, field.Name);
+                            }
+                            catch (Exception)
+                            {
+                            }
+                        }
+                    }
+                }
+
+                Recurse(SelectedObject, 0, SelectedObject.GetItemName());
+            }
+
+            [Description("Global program search")]
+            public static void Search(string query, string[]? flags = null)
+            {
+                flags = DefaultNullFlags(flags, false).RemoveFlagMarkers();
+                object[] results = GlobalSearch(query);
+                if (flags.Contains("select"))
+                {
+                    object selection = AskWhich(results, "Results");
+                    if (selection is string errorMessage)
+                    {
+                        Interpreter.Error.WriteLine(errorMessage);
+                        return;
+                    }
+                    SelectedObject = selection;
+                    SelectedContainer = null;
+                }
+                else
+                {
+                    foreach (object obj in results)
+                        Interpreter.Out.WriteLine($"{obj} -> {obj.GetType().NiceTypeName()}");
+                }
+            }
+
             public static void Open(string name, string[]? flags = null, params object[] constructArgs)
             {
-                flags = flags.DefaultNullFlags().RemoveFlagMarkers();
+                flags = flags.DefaultNullFlags(DFLT_FLAGS_TO_LOWER).RemoveFlagMarkers();
 
                 object searchResult = ExtensionSearch(name);
                 if (searchResult is string errorMessage)
@@ -1718,7 +1826,7 @@ namespace ControllerTerminal
                     return;
                 }
 
-                flags = flags.DefaultNullFlags(false).RemoveFlagMarkers();
+                flags = flags.DefaultNullFlags(DFLT_FLAGS_TO_LOWER).RemoveFlagMarkers();
                 if (!flags.Contains("y"))
                 {
                     Interpreter.Out.Write("Confirm (yes/no):");
@@ -1754,10 +1862,36 @@ namespace ControllerTerminal
             }
 
             [Description("Dump PanelController logs to output window.")]
-            public static void Dump([Description("/T -> Time, /L -> Level, /F -> From, /M -> Message")] string format = "/T [/L][/F] /M")
+            public static void Dump([Description("/T -> Time, /L -> Level, /F -> From, /M -> Message")] string format = "/T [/L][/F] /M", string fileOutput = "")
             {
+                TextWriter writer;
+                Action scopeExit;
+
+                if (fileOutput != "")
+                {
+                    FileInfo file = new FileInfo(fileOutput);
+                    if (!file.Directory?.Exists ?? false)
+                        return;
+                    if (!file.Exists)
+                        file.Create();
+                    FileStream stream = file.Open(FileMode.Create);
+                    StreamWriter streamWriter = new StreamWriter(stream);
+                    scopeExit = () =>
+                    {
+                        streamWriter.Close();
+                        stream.Close();
+                    };
+                    writer = streamWriter;
+                }
+                else
+                {
+                    writer = Interpreter.Out;
+                    scopeExit = () => { };
+                }
+
                 foreach (Logger.HistoricalLog log in Logger.Logs)
-                    Interpreter.Out.WriteLine(log.ToString(format));
+                    writer.WriteLine(log.ToString(format));
+                scopeExit();
             }
 
             [Description("Clear the output window.")]
